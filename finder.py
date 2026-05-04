@@ -91,14 +91,11 @@ def find_businesses_without_websites(api_key: str, city: str, business_type: str
             return []
         loc = geo[0]["geometry"]["location"]
         center_lat, center_lng = loc["lat"], loc["lng"]
-        # Search at 3 km, 6 km, and 10 km rings around the centre.
-        # Closer rings catch inner suburbs; outer rings catch areas where
-        # small businesses are less likely to have websites.
+        # Search centre + 8 points at 5 km (residential ring).
+        # 9 points is enough to find no-website businesses without timing out.
         neighborhoods = (
             [(center_lat, center_lng)] +
-            _offset_coords(center_lat, center_lng, 3) +
-            _offset_coords(center_lat, center_lng, 6) +
-            _offset_coords(center_lat, center_lng, 10)
+            _offset_coords(center_lat, center_lng, 5)
         )
 
     results = []

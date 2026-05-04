@@ -67,7 +67,7 @@ def log(msg):
     print(entry)
 
 
-MAX_PER_SEARCH = 60  # Google Places API hard ceiling (3 pages × 20)
+MAX_PER_SEARCH = 10  # Keep low: each business takes ~2 min (Claude + email finder)
 
 def run_bot_cycle():
     scheduler_state["running"] = True
@@ -91,7 +91,7 @@ def run_bot_cycle():
                     [sys.executable, BOT_MAIN,
                      "--city", city, "--type", category, "--limit", str(MAX_PER_SEARCH)],
                     cwd=os.path.join(os.path.dirname(__file__), ".."),
-                    capture_output=True, text=True, timeout=600,
+                    capture_output=True, text=True, timeout=1800,  # 30 min: 10 businesses × ~2 min each
                 )
                 found    = result.stdout.count("[found]")
                 sent     = result.stdout.count("[email] Sent!")

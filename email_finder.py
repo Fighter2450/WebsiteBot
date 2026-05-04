@@ -95,7 +95,7 @@ def _filter(emails: list[str], name: str) -> list[str]:
     return ranked
 
 
-def _get(url: str, timeout: int = 10) -> str:
+def _get(url: str, timeout: int = 5) -> str:
     try:
         r = requests.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
         return r.text if r.status_code == 200 else ""
@@ -103,7 +103,7 @@ def _get(url: str, timeout: int = 10) -> str:
         return ""
 
 
-def _ddg(query: str, timeout: int = 10) -> str:
+def _ddg(query: str, timeout: int = 5) -> str:
     try:
         r = requests.get(
             "https://html.duckduckgo.com/html/",
