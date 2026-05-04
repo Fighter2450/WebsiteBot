@@ -111,7 +111,9 @@ def run(city: str, business_type: str, limit: int, dry_run: bool):
 
         # Save HTML + generate token before emailing
         token = mark_processed(place_id, name, city, business_type, "", preview_url, "no_email", html=html)
-        customize_url = f"http://localhost:5050/customize/{token}"
+        # Use PUBLIC_URL env var (set on Railway) so customize links work from emails
+        base_url = os.environ.get("PUBLIC_URL", "").rstrip("/") or "http://localhost:5050"
+        customize_url = f"{base_url}/customize/{token}"
 
         print(f"[email] Searching for contact email...")
         email = find_email(biz)

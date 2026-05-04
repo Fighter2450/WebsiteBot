@@ -127,10 +127,27 @@ def _extract_urls_from_ddg(html: str) -> list[str]:
 
 
 def _has_mx(domain: str) -> bool:
-    """Check if a domain has MX records (i.e. accepts email)."""
+    """Check if a domain has MX records by querying DNS port 53 directly."""
     try:
-        socket.getaddrinfo(domain, None)
-        return True
+        # Build a minimal DNS query for MX records
+        import struct
+        query_id = b'\xab\xcd'
+        flags    = b'\x01\x00'   # standard query, recursion desired
+        counts   = b'\x00\x01\x00\x00\x00\x00\x00\x00'  # 1 question
+        qname    = b"".join(bytes([len(p)]) + p.encode() for p in domain.split(".")) + b"\x00"
+        qtype    = b'\x00\x0f'   # MX
+        qclass   = b'\x00\x01'   # IN
+        packet   = query_id + flags + counts + qname + qtype + qclass
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(3)
+        sock.sendto(packet, ("8.8.8.8", 53))
+        resp, _ = sock.recvfrom(512)
+        sock.close()
+
+        # Parse flags: ANCOUNT (bytes 6-7) > 0 means MX records found
+        ancount = struct.unpack(">H", resp[6:8])[0]
+        return ancount > 0
     except Exception:
         return False
 
