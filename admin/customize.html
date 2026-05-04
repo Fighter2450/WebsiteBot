@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customize Your Website</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --purple: #7c3aed; --purple-light: #ede9fe; --purple-dark: #6d28d9;
+    --blue: #2563eb; --green: #059669; --red: #dc2626;
+    --gray: #6b7280; --border: #e5e7eb; --bg: #f3f4f6;
+  }
+
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: #111; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* TOP BAR */
+  .topbar {
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
+    height: 52px; flex-shrink: 0; z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo { font-weight: 800; font-size: 0.85rem; color: var(--purple); letter-spacing: -0.02em; }
+  .topbar-sep { color: var(--border); font-size: 1.2rem; }
+  .biz-name { font-weight: 600; font-size: 0.92rem; color: #111; }
+  .topbar-right { display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    padding: 7px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .btn-primary { background: var(--purple); color: #fff; }
+  .btn-primary:hover { background: var(--purple-dark); }
+  .btn-secondary { background: #fff; color: #374151; border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { background: #047857; }
+  .btn-danger { background: var(--red); color: #fff; }
+
+  /* MAIN LAYOUT */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 320px; flex-shrink: 0; background: #fff;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* CONTEXT EDITOR — shown when element is selected */
+  .context-panel {
+    background: #fff; border-bottom: 2px solid var(--purple);
+    flex-shrink: 0; display: none; flex-direction: column;
+  }
+  .context-panel.visible { display: flex; }
+  .context-header {
+    padding: 10px 14px 8px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .context-title {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--purple); display: flex; align-items: center; gap: 6px;
+  }
+  .context-close {
+    background: none; border: none; cursor: pointer; color: var(--gray);
+    font-size: 1rem; line-height: 1; padding: 2px; border-radius: 4px;
+  }
+  .context-close:hover { background: var(--bg); color: #111; }
+  .context-body { padding: 0 14px 12px; }
+  .context-input {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; font-size: 0.84rem; font-family: inherit;
+    color: #111; resize: vertical; min-height: 60px; max-height: 140px;
+    transition: border-color 0.15s;
+  }
+  .context-input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
+  .context-hint { font-size: 0.7rem; color: var(--gray); margin-top: 5px; }
+  .context-img-preview { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; margin-bottom: 8px; }
+
+  /* CLICK PROMPT — shown when nothing selected */
+  .click-prompt {
+    padding: 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0;
+  }
+  .click-prompt.hidden { display: none; }
+  .click-prompt-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .click-prompt-text { font-size: 0.78rem; color: var(--gray); line-height: 1.5; }
+  .click-prompt-text strong { color: #111; display: block; margin-bottom: 2px; font-size: 0.82rem; }
+
+  /* SIDEBAR SECTIONS */
+  .sidebar-sections { overflow-y: auto; flex: 1; }
+  .sidebar-sections::-webkit-scrollbar { width: 4px; }
+  .sidebar-sections::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .section { padding: 14px; border-bottom: 1px solid var(--border); }
+  .section-title {
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--gray); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Logo */
+  .logo-drop {
+    border: 2px dashed var(--border); border-radius: 8px;
+    padding: 16px; text-align: center; cursor: pointer;
+    transition: all 0.15s; position: relative; overflow: hidden;
+  }
+  .logo-drop:hover { border-color: var(--purple); background: var(--purple-light); }
+  .logo-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .logo-preview-img { width: 64px; height: 64px; object-fit: contain; border-radius: 6px; margin: 0 auto 6px; display: block; }
+  .logo-icon { font-size: 2rem; margin-bottom: 6px; }
+  .logo-hint { font-size: 0.75rem; color: var(--gray); }
+  .logo-hint strong { color: var(--purple); }
+  .logo-remove { font-size: 0.72rem; color: var(--red); cursor: pointer; margin-top: 5px; display: inline-block; background: none; border: none; }
+
+  /* Photos */
+  .photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+  .photo-thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: var(--bg); }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-remove {
+    position: absolute; top: 3px; right: 3px; width: 18px; height: 18px;
+    background: rgba(0,0,0,0.65); color: #fff; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; cursor: pointer; border: none;
+  }
+  .add-photo-btn {
+    aspect-ratio: 1; border: 2px dashed var(--border); border-radius: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 0.65rem; color: var(--gray); gap: 3px;
+    transition: all 0.15s; position: relative; overflow: hidden; background: var(--bg);
+  }
+  .add-photo-btn:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-light); }
+  .add-photo-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* Form */
+  label { display: block; font-size: 0.75rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  input[type=text], textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 10px; font-size: 0.82rem; font-family: inherit;
+    color: #111; transition: border-color 0.15s; resize: vertical;
+  }
+  input[type=text]:focus, textarea:focus {
+    outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+  }
+  .field { margin-bottom: 10px; }
+  textarea { min-height: 70px; }
+
+  /* SIDEBAR FOOTER */
+  .sidebar-footer { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; background: #fff; }
+  .regen-note { font-size: 0.7rem; color: var(--gray); text-align: center; }
+
+  /* PREVIEW PANE */
+  .preview-pane { flex: 1; position: relative; background: #e5e7eb; overflow: hidden; display: flex; flex-direction: column; }
+  .preview-toolbar {
+    background: rgba(255,255,255,0.96); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 14px; backdrop-filter: blur(8px); flex-shrink: 0; z-index: 10;
+  }
+  .preview-label { font-size: 0.72rem; font-weight: 600; color: var(--gray); }
+  .device-btns { display: flex; gap: 4px; }
+  .device-btn {
+    padding: 4px 9px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--gray); transition: all 0.15s;
+  }
+  .device-btn.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+  .preview-frame-wrap {
+    flex: 1; display: flex; align-items: flex-start; justify-content: center;
+    padding: 16px; overflow-y: auto; overflow-x: hidden;
+  }
+  .preview-frame-wrap::-webkit-scrollbar { width: 6px; }
+  .preview-frame-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  iframe {
+    border: none; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    background: #fff; flex-shrink: 0; transition: width 0.3s;
+  }
+  iframe.desktop { width: 100%; }
+  iframe.tablet  { width: 768px; }
+  iframe.mobile  { width: 390px; border-radius: 20px; }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position: absolute; inset: 0;
+    background: rgba(249,250,251,0.92); display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 20;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--purple); border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 0.82rem; color: var(--gray); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: #111; color: #fff;
+    padding: 10px 18px; border-radius: 8px; font-size: 0.82rem; font-weight: 500;
+    opacity: 0; transform: translateY(8px); transition: all 0.25s; z-index: 200; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">WebsiteBot</div>
+    <span class="topbar-sep">/</span>
+    <div class="biz-name" id="biz-name">Loading...</div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-secondary" onclick="downloadHTML()">⬇ Download</button>
+    <button class="btn btn-secondary" onclick="window.open('/guide','_blank')">📖 Go Live Guide</button>
+    <button class="btn btn-primary" id="regen-btn" onclick="regenerate()">✨ Regenerate with AI</button>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Context editor (shown on click) -->
+    <div class="context-panel" id="context-panel">
+      <div class="context-header">
+        <div class="context-title" id="context-title">✏️ Editing Text</div>
+        <button class="context-close" onclick="clearSelection()" title="Close">✕</button>
+      </div>
+      <div class="context-body" id="context-body">
+        <!-- filled dynamically -->
+      </div>
+    </div>
+
+    <!-- Click prompt (shown when nothing selected) -->
+    <div class="click-prompt" id="click-prompt">
+      <div class="click-prompt-icon">👆</div>
+      <div class="click-prompt-text">
+        <strong>Click anything to edit it</strong>
+        Hover over text or images in the preview to select and edit them directly.
+      </div>
+    </div>
+
+    <!-- Scrollable sections -->
+    <div class="sidebar-sections">
+
+      <div class="section">
+        <div class="section-title">🏷️ Logo</div>
+        <div class="logo-drop" id="logo-drop" onclick="document.getElementById('logo-input').click()">
+          <input type="file" id="logo-input" accept="image/*" onchange="handleLogo(event)">
+          <div id="logo-placeholder">
+            <div class="logo-icon">🖼️</div>
+            <div class="logo-hint">Click to upload logo<br><strong>PNG, JPG, SVG</strong></div>
+          </div>
+          <div id="logo-preview-wrap" style="display:none">
+            <img id="logo-img" class="logo-preview-img" src="" alt="Logo">
+            <div class="logo-hint">Logo uploaded ✓</div>
+            <button class="logo-remove" onclick="removeLogo(event)">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📸 Photos</div>
+        <div class="photos-grid" id="photos-grid">
+          <div class="add-photo-btn">
+            <input type="file" accept="image/*" multiple onchange="handlePhotos(event)">
+            <span style="font-size:1.2rem">+</span>
+            <span>Add</span>
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--gray)">Upload real photos of your business, team, or products.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">✏️ Business Info</div>
+        <div class="field"><label>Business Name</label><input type="text" id="f-name" placeholder="Your Business Name"></div>
+        <div class="field"><label>Tagline</label><input type="text" id="f-tagline" placeholder="A short catchy line"></div>
+        <div class="field"><label>Description</label><textarea id="f-desc" placeholder="What makes you special..."></textarea></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📍 Contact & Hours</div>
+        <div class="field"><label>Phone</label><input type="text" id="f-phone" placeholder="(555) 000-0000"></div>
+        <div class="field"><label>Address</label><input type="text" id="f-address" placeholder="123 Main St, City, State"></div>
+        <div class="field"><label>Hours (one per line)</label><textarea id="f-hours" placeholder="Monday: 9am – 5pm&#10;Tuesday: 9am – 5pm" style="min-height:100px"></textarea></div>
+      </div>
+
+    </div><!-- end sidebar-sections -->
+
+    <div class="sidebar-footer">
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="regenerate()">✨ Regenerate Website with AI</button>
+      <div class="regen-note">Updates all text, layout, and visuals using your info above</div>
+    </div>
+
+  </div><!-- end sidebar -->
+
+  <!-- PREVIEW PANE -->
+  <div class="preview-pane">
+    <div class="preview-toolbar">
+      <span class="preview-label">Live Preview — click anything to edit</span>
+      <div class="device-btns">
+        <button class="device-btn active" onclick="setDevice('desktop',this)">🖥 Desktop</button>
+        <button class="device-btn" onclick="setDevice('tablet',this)">⬜ Tablet</button>
+        <button class="device-btn" onclick="setDevice('mobile',this)">📱 Mobile</button>
+      </div>
+      <a id="open-link" href="#" target="_blank" class="btn btn-secondary" style="font-size:0.72rem;padding:5px 10px">↗ Open</a>
+    </div>
+    <div class="preview-frame-wrap">
+      <iframe id="preview-frame" class="desktop"></iframe>
+    </div>
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loading-text">Rebuilding your website...</div>
+    </div>
+  </div>
+
+</div><!-- end layout -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN = location.pathname.split('/').pop();
+let currentHTML = '';
+let logoB64 = '';
+let photos = [];
+let selectedEid = null;
+let selectedIsImage = false;
+let previewUrl = '';
+
+// ── EDITOR SCRIPT injected into iframe ─────────────────────────────
+const EDITOR_SCRIPT = `
+(function() {
+  // Assign edit IDs to all text elements
+  var textSels = 'h1,h2,h3,h4,h5,h6,p,span,a,li,strong,em,address,td,th,blockquote,figcaption,label,button,div';
+  var all = document.querySelectorAll(textSels);
+  var ti = 0;
+  all.forEach(function(el) {
+    var txt = el.innerText ? el.innerText.trim() : '';
+    // Only tag elements that have direct visible text but aren't just containers with many children
+    if (txt.length > 0 && txt.length < 500) {
+      el.setAttribute('data-eid', 't' + ti++);
+    }
+  });
+
+  // Tag images
+  var imgs = document.querySelectorAll('img');
+  imgs.forEach(function(img, i) {
+    img.setAttribute('data-eid', 'i' + i);
+  });
+
+  // Inject hover styles
+  var style = document.createElement('style');
+  style.textContent = '[data-eid] { cursor:pointer !important; transition: outline 0.1s; } [data-eid]:hover { outline: 2px solid rgba(124,58,237,0.55) !important; outline-offset: 2px !important; } [data-eid].eid-selected { outline: 2px solid #7c3aed !important; outline-offset: 2px !important; }';
+  document.head.appendChild(style);
+
+  var lastSelected = null;
+
+  document.addEventListener('click', function(e) {
+    var el = e.target;
+    // Walk up to find the closest eid element
+    while (el && el !== document.body) {
+      if (el.hasAttribute && el.hasAttribute('data-eid')) break;
+      el = el.parentElement;
+    }
+    if (!el || !el.hasAttribute('data-eid')) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (lastSelected) lastSelected.classList.remove('eid-selected');
+    el.classList.add('eid-selected');
+    lastSelected = el;
+
+    var eid = el.getAttribute('data-eid');
+    var isImg = eid.startsWith('i');
+    window.parent.postMessage({
+      type: 'eid-click',
+      eid: eid,
+      isImage: isImg,
+      text: isImg ? '' : (el.innerText || '').trim(),
+      src: isImg ? el.src : '',
+      tag: el.tagName
+    }, '*');
+  }, true);
+
+  // Receive updates
+  window.addEventListener('message', function(e) {
+    if (!e.data || !e.data.type) return;
+    if (e.data.type === 'eid-update-text') {
+      var el = document.querySelector('[data-eid="' + e.data.eid + '"]');
+      if (el) {
+        // Preserve child elements if any — only update text nodes
+        var hasChildEls = Array.from(el.childNodes).some(function(n){ return n.nodeType === 1; });
+        if (!hasChildEls) {
+          el.textContent = e.data.text;
+        } else {
+          // Update first text node only
+          for (var n of el.childNodes) {
+            if (n.nodeType === 3 && n.textContent.trim()) { n.textContent = e.data.text; break; }
+          }
+        }
+      }
+    }
+    if (e.data.type === 'eid-update-image') {
+      var img = document.querySelector('[data-eid="' + e.data.eid + '"]');
+      if (img) img.src = e.data.src;
+    }
+    if (e.data.type === 'eid-clear') {
+      if (lastSelected) { lastSelected.classList.remove('eid-selected'); lastSelected = null; }
+    }
+    if (e.data.type === 'eid-get-html') {
+      window.parent.postMessage({ type: 'eid-html-result', html: '<!DOCTYPE html>' + document.documentElement.outerHTML }, '*');
+    }
+  });
+})();
+`;
+
+// ── Load ────────────────────────────────────────────────────────────
+async function load() {
+  const r = await fetch(`/api/customize/${TOKEN}`);
+  const d = await r.json();
+  if (!d || d.error) { document.getElementById('biz-name').textContent = 'Not found'; return; }
+
+  document.getElementById('biz-name').textContent = d.name;
+  document.getElementById('f-name').value    = d.name || '';
+  document.getElementById('f-tagline').value = d.tagline || '';
+  document.getElementById('f-desc').value    = d.description || '';
+  document.getElementById('f-phone').value   = d.phone || '';
+  document.getElementById('f-address').value = d.address || '';
+  document.getElementById('f-hours').value   = (d.hours || []).join('\n');
+  document.title = `Customize — ${d.name}`;
+  previewUrl = d.preview_url || '';
+  document.getElementById('open-link').href = previewUrl || '#';
+
+  if (d.logo) setLogoPreview(d.logo);
+  if (d.photos && d.photos.length) { photos = d.photos; renderPhotos(); }
+
+  const html = d.custom_html || d.html || '';
+  loadPreview(html);
+}
+
+function loadPreview(html) {
+  currentHTML = html;
+  const frame = document.getElementById('preview-frame');
+  frame.srcdoc = html;
+  frame.onload = () => {
+    try {
+      // Auto-size iframe to full content height
+      const h = frame.contentWindow.document.body.scrollHeight;
+      frame.style.height = Math.max(h, 600) + 'px';
+      // Inject editor
+      const script = frame.contentWindow.document.createElement('script');
+      script.textContent = EDITOR_SCRIPT;
+      frame.contentWindow.document.body.appendChild(script);
+    } catch(e) { console.warn('Could not inject editor script', e); }
+  };
+}
+
+// ── Message from iframe ─────────────────────────────────────────────
+window.addEventListener('message', (e) => {
+  if (!e.data || !e.data.type) return;
+
+  if (e.data.type === 'eid-click') {
+    selectedEid = e.data.eid;
+    selectedIsImage = e.data.isImage;
+    showContextEditor(e.data);
+  }
+
+  if (e.data.type === 'eid-html-result') {
+    currentHTML = e.data.html;
+    downloadBlob(currentHTML);
+  }
+});
+
+// ── Context editor ──────────────────────────────────────────────────
+function showContextEditor(data) {
+  const panel = document.getElementById('context-panel');
+  const title = document.getElementById('context-title');
+  const body  = document.getElementById('context-body');
+  document.getElementById('click-prompt').classList.add('hidden');
+  panel.classList.add('visible');
+
+  if (data.isImage) {
+    title.textContent = '🖼️ Replace Image';
+    body.innerHTML = `
+      <img src="${data.src}" class="context-img-preview" id="ctx-img-preview" alt="">
+      <label style="position:relative;display:block;width:100%">
+        <div class="btn btn-secondary" style="width:100%;justify-content:center;margin-bottom:6px">📁 Choose New Image</div>
+        <input type="file" accept="image/*" onchange="handleContextImage(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+      </label>
+      <div class="context-hint">Click above to replace this image with one from your computer.</div>`;
+  } else {
+    const isLong = data.text.length > 80 || data.text.includes('\n');
+    title.textContent = `✏️ Editing ${data.tag.toLowerCase()}`;
+    body.innerHTML = `
+      ${isLong
+        ? `<textarea class="context-input" id="ctx-input" oninput="liveUpdate()">${escHtml(data.text)}</textarea>`
+        : `<input type="text" class="context-input" id="ctx-input" value="${escHtml(data.text)}" oninput="liveUpdate()" style="min-height:unset;resize:none">`
+      }
+      <div class="context-hint">Changes apply live as you type.</div>`;
+    setTimeout(() => {
+      const inp = document.getElementById('ctx-input');
+      if (inp) { inp.focus(); inp.select(); }
+    }, 50);
+  }
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function liveUpdate() {
+  const inp = document.getElementById('ctx-input');
+  if (!inp || !selectedEid) return;
+  const frame = document.getElementById('preview-frame');
+  frame.contentWindow.postMessage({ type: 'eid-update-text', eid: selectedEid, text: inp.value }, '*');
+}
+
+function handleContextImage(e) {
+  const file = e.target.files[0];
+  if (!file || !selectedEid) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const src = ev.target.result;
+    const preview = document.getElementById('ctx-img-preview');
+    if (preview) preview.src = src;
+    const frame = document.getElementById('preview-frame');
+    frame.contentWindow.postMessage({ type: 'eid-update-image', eid: selectedEid, src }, '*');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearSelection() {
+  selectedEid = null;
+  document.getElementById('context-panel').classList.remove('visible');
+  document.getElementById('click-prompt').classList.remove('hidden');
+  const frame = document.getElementById('preview-frame');
+  try { frame.contentWindow.postMessage({ type: 'eid-clear' }, '*'); } catch(e) {}
+}
+
+// ── Logo ────────────────────────────────────────────────────────────
+function handleLogo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => setLogoPreview(ev.target.result);
+  reader.readAsDataURL(file);
+}
+function setLogoPreview(src) {
+  logoB64 = src;
+  document.getElementById('logo-img').src = src;
+  document.getElementById('logo-placeholder').style.display = 'none';
+  document.getElementById('logo-preview-wrap').style.display = 'block';
+}
+function removeLogo(e) {
+  e.stopPropagation();
+  logoB64 = '';
+  document.getElementById('logo-placeholder').style.display = 'block';
+  document.getElementById('logo-preview-wrap').style.display = 'none';
+}
+
+// ── Photos ──────────────────────────────────────────────────────────
+function handlePhotos(e) {
+  const files = Array.from(e.target.files);
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      photos.push(ev.target.result);
+      if (++loaded === files.length) renderPhotos();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function renderPhotos() {
+  const grid = document.getElementById('photos-grid');
+  const thumbs = photos.map((src, i) => `
+    <div class="photo-thumb">
+      <img src="${src}" alt="">
+      <button class="photo-remove" onclick="removePhoto(${i})">✕</button>
+    </div>`).join('');
+  grid.innerHTML = thumbs + `
+    <div class="add-photo-btn">
+      <input type="file" accept="image/*" multiple onchange="handlePhotos(event)">
+      <span style="font-size:1.2rem">+</span><span>Add</span>
+    </div>`;
+}
+function removePhoto(i) { photos.splice(i,1); renderPhotos(); }
+
+// ── Device switcher ─────────────────────────────────────────────────
+function setDevice(mode, btn) {
+  document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('preview-frame').className = mode;
+}
+
+// ── Regenerate with AI ──────────────────────────────────────────────
+async function regenerate() {
+  const overlay = document.getElementById('loading-overlay');
+  document.getElementById('loading-text').textContent = 'Rebuilding with AI...';
+  overlay.classList.add('show');
+  clearSelection();
+
+  const payload = {
+    name:        document.getElementById('f-name').value,
+    tagline:     document.getElementById('f-tagline').value,
+    description: document.getElementById('f-desc').value,
+    phone:       document.getElementById('f-phone').value,
+    address:     document.getElementById('f-address').value,
+    hours:       document.getElementById('f-hours').value.split('\n').filter(Boolean),
+    logo:        logoB64,
+    photos:      photos,
+  };
+
+  try {
+    const r = await fetch(`/api/customize/${TOKEN}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (d.html) { loadPreview(d.html); showToast('Website regenerated!', 'success'); }
+    else showToast(d.error || 'Something went wrong', 'error');
+  } catch(e) {
+    showToast('Server error — is it running?', 'error');
+  } finally {
+    overlay.classList.remove('show');
+  }
+}
+
+// ── Download ────────────────────────────────────────────────────────
+function downloadHTML() {
+  // Ask iframe for its current HTML (includes live edits)
+  const frame = document.getElementById('preview-frame');
+  try {
+    frame.contentWindow.postMessage({ type: 'eid-get-html' }, '*');
+    // downloadBlob called when message comes back
+  } catch(e) {
+    downloadBlob(currentHTML);
+  }
+}
+function downloadBlob(html) {
+  if (!html) return showToast('Nothing to download yet', 'error');
+  const name = (document.getElementById('f-name').value || 'website').replace(/\s+/g,'-').toLowerCase();
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}-website.html`;
+  a.click();
+  showToast('Downloaded!', 'success');
+}
+
+// ── Toast ───────────────────────────────────────────────────────────
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+load();
+</script>
+</body>
+</html>

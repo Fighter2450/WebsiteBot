@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Go Live — WebsiteBot Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f9fafb; color: #111; line-height: 1.7; }
+
+  .hero {
+    background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+    color: #fff; padding: 60px 24px; text-align: center;
+  }
+  .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: 12px; }
+  .hero p { font-size: 1.1rem; opacity: 0.85; max-width: 560px; margin: 0 auto; }
+
+  .container { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  .intro {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 28px 32px; margin-bottom: 40px;
+  }
+  .intro p { color: #374151; font-size: 0.95rem; }
+  .cost-pills { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .pill {
+    background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 20px;
+    padding: 6px 16px; font-size: 0.82rem; font-weight: 600; color: #1e40af;
+  }
+
+  /* Steps */
+  .step {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 32px; margin-bottom: 20px; position: relative;
+  }
+  .step-number {
+    position: absolute; top: -16px; left: 28px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff; width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem;
+  }
+  .step h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; margin-top: 4px; }
+  .step p { color: #374151; font-size: 0.9rem; margin-bottom: 12px; }
+  .step p:last-child { margin-bottom: 0; }
+
+  .substeps { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+  .substep {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: #f9fafb; border-radius: 8px; padding: 12px 14px;
+  }
+  .substep-num {
+    width: 22px; height: 22px; border-radius: 50%; background: #e5e7eb;
+    font-size: 0.72rem; font-weight: 700; color: #374151; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .substep-text { font-size: 0.88rem; color: #374151; }
+  .substep-text strong { color: #111; }
+
+  .tip {
+    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;
+    padding: 12px 16px; font-size: 0.85rem; color: #166534; margin-top: 14px;
+  }
+  .tip::before { content: '💡 '; }
+
+  .warning {
+    background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;
+    padding: 12px 16px; font-size: 0.85rem; color: #9a3412; margin-top: 14px;
+  }
+  .warning::before { content: '⚠️ '; }
+
+  .code {
+    background: #1e293b; color: #e2e8f0; border-radius: 6px;
+    padding: 10px 14px; font-family: monospace; font-size: 0.85rem;
+    margin: 10px 0; display: block; overflow-x: auto;
+  }
+
+  .link-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 7px;
+    text-decoration: none; font-size: 0.85rem; font-weight: 600; margin-top: 12px;
+    transition: background 0.2s;
+  }
+  .link-btn:hover { background: #1d4ed8; }
+  .link-btn.purple { background: #7c3aed; }
+  .link-btn.purple:hover { background: #6d28d9; }
+  .link-btn.green { background: #059669; }
+  .link-btn.green:hover { background: #047857; }
+
+  .screen-img {
+    border: 1px solid #e5e7eb; border-radius: 8px; margin: 14px 0;
+    overflow: hidden; background: #f9fafb;
+  }
+  .screen-img-placeholder {
+    height: 140px; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; color: #d1d5db;
+  }
+
+  .done-banner {
+    background: linear-gradient(135deg, #059669, #0284c7);
+    color: #fff; border-radius: 12px; padding: 32px; text-align: center; margin-top: 40px;
+  }
+  .done-banner h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+  .done-banner p { opacity: 0.9; margin-bottom: 20px; font-size: 0.95rem; }
+
+  .faq { margin-top: 40px; }
+  .faq h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; }
+  .faq-item { border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .faq-q {
+    padding: 14px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+    background: #fff; display: flex; justify-content: space-between;
+    transition: background 0.2s;
+  }
+  .faq-q:hover { background: #f9fafb; }
+  .faq-a { padding: 0 18px; font-size: 0.88rem; color: #374151; max-height: 0; overflow: hidden; transition: max-height 0.3s, padding 0.3s; }
+  .faq-item.open .faq-a { max-height: 200px; padding: 14px 18px; border-top: 1px solid #e5e7eb; }
+  .faq-item.open .faq-arrow { transform: rotate(180deg); }
+  .faq-arrow { transition: transform 0.3s; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>🚀 How to Go Live</h1>
+  <p>Buy a domain, deploy your website, and connect everything in under 30 minutes. No tech skills needed.</p>
+</div>
+
+<div class="container">
+
+  <div class="intro">
+    <p>This guide walks you through every step to get your website live on the internet with a professional domain name. The total cost is about <strong>$10–$15/year</strong> for the domain. Hosting is <strong>free</strong> on Netlify.</p>
+    <div class="cost-pills">
+      <div class="pill">Domain: ~$12/year</div>
+      <div class="pill">Hosting: Free (Netlify)</div>
+      <div class="pill">Time: ~20 minutes</div>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="step-number">1</div>
+    <h2>Download your website file</h2>
+    <p>Go back to your customization page and click <strong>"Download HTML"</strong>. This saves a single file to your computer — that's your entire website.</p>
+    <div class="tip">The file will be named something like <code>my-business-website.html</code>. Save it somewhere you can find it easily, like your Desktop.</div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="step-number">2</div>
+    <h2>Deploy to Netlify (free hosting)</h2>
+    <p>Netlify hosts your website for free and gives you a live URL in under 60 seconds.</p>
+
+    <div class="substeps">
+      <div class="substep">
+        <div class="substep-num">1</div>
+        <div class="substep-text">Go to <strong>netlify.com</strong> and click <strong>"Sign up"</strong> — use your Google or email account</div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">2</div>
+        <div class="substep-text">Once logged in, look for the big box that says <strong>"Deploy manually"</strong> or <strong>"Sites"</strong></div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">3</div>
+        <div class="substep-text"><strong>Drag and drop</strong> your downloaded HTML file directly into that box</div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">4</div>
+        <div class="substep-text">Netlify will give you a URL like <strong>quirky-name-123456.netlify.app</strong> — your site is already live!</div>
+      </div>
+    </div>
+
+    <a href="https://netlify.com" target="_blank" class="link-btn green">→ Go to Netlify</a>
+    <div class="tip">Netlify's free plan is more than enough for a small business website. You never need to upgrade.</div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="step-number">3</div>
+    <h2>Buy your domain name</h2>
+    <p>A domain like <strong>www.mybusiness.com</strong> costs about $10–$15 per year. We recommend Namecheap — it's the cheapest and easiest.</p>
+
+    <div class="substeps">
+      <div class="substep">
+        <div class="substep-num">1</div>
+        <div class="substep-text">Go to <strong>namecheap.com</strong> and type your business name in the search box</div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">2</div>
+        <div class="substep-text">Pick a <strong>.com</strong> domain if available. It usually costs <strong>$8–$14/year</strong></div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">3</div>
+        <div class="substep-text">Add it to your cart, create an account, and check out. Turn off any add-ons you don't need</div>
+      </div>
+    </div>
+
+    <a href="https://namecheap.com" target="_blank" class="link-btn">→ Go to Namecheap</a>
+    <div class="tip">If your exact .com name is taken, try adding your city — like <strong>mikes-pizza-houston.com</strong>. It still looks professional.</div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="step-number">4</div>
+    <h2>Connect your domain to Netlify</h2>
+    <p>This is the only slightly technical step — but just follow these instructions and you'll be done in 5 minutes.</p>
+
+    <p style="font-weight:600;margin-top:16px;margin-bottom:6px">In Netlify:</p>
+    <div class="substeps">
+      <div class="substep">
+        <div class="substep-num">1</div>
+        <div class="substep-text">Go to your site in Netlify → click <strong>Site configuration</strong> → <strong>Domain management</strong></div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">2</div>
+        <div class="substep-text">Click <strong>"Add a domain"</strong> and type the domain you just bought (e.g. <code>mybusiness.com</code>)</div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">3</div>
+        <div class="substep-text">Netlify will show you <strong>two nameserver addresses</strong> — copy them (they look like <code>dns1.p01.nsone.net</code>)</div>
+      </div>
+    </div>
+
+    <p style="font-weight:600;margin-top:16px;margin-bottom:6px">In Namecheap:</p>
+    <div class="substeps">
+      <div class="substep">
+        <div class="substep-num">4</div>
+        <div class="substep-text">Go to <strong>namecheap.com</strong> → <strong>Domain List</strong> → click <strong>Manage</strong> next to your domain</div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">5</div>
+        <div class="substep-text">Under <strong>Nameservers</strong>, change the dropdown from "Namecheap BasicDNS" to <strong>"Custom DNS"</strong></div>
+      </div>
+      <div class="substep">
+        <div class="substep-num">6</div>
+        <div class="substep-text">Paste the two nameserver addresses from Netlify into the boxes and click the <strong>green checkmark</strong> to save</div>
+      </div>
+    </div>
+
+    <div class="warning">DNS changes take <strong>15 minutes to 24 hours</strong> to go live worldwide. This is normal — just wait and your domain will work on its own.</div>
+    <div class="tip">Once connected, Netlify automatically sets up <strong>HTTPS/SSL</strong> (the padlock in the browser) for free.</div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <div class="step-number">5</div>
+    <h2>You're live! 🎉</h2>
+    <p>Once DNS propagates, type your domain into any browser and you'll see your website. Share it on Google, Yelp, Facebook, and your Google Business profile.</p>
+
+    <p style="margin-top:12px">To get found on Google, go to <a href="https://business.google.com" target="_blank" style="color:#2563eb;font-weight:600">Google Business Profile</a> and add your new website there too — it helps customers find you in local searches.</p>
+  </div>
+
+  <!-- Done banner -->
+  <div class="done-banner">
+    <h2>Need help? We'll do it all for you.</h2>
+    <p>For $500 one-time + $99/month we handle the domain, deployment, updates, and support so you never have to think about it.</p>
+    <a href="mailto:?" class="link-btn" style="background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);color:#fff">📧 Reply to our email to get started</a>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq">
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Do I need to know how to code? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">No. Everything in this guide is point-and-click. The only "technical" step is copy-pasting two nameserver addresses from one website to another.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What if my domain name is taken? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Try adding your city name (e.g. myrestaurant-dallas.com), or use .net or .co instead of .com. These are still professional and often cheaper.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How long does it take for my site to go live? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Your site is live on Netlify instantly. Connecting your custom domain takes between 15 minutes and 24 hours depending on your internet provider.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Is Netlify actually free? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Yes. Netlify's free plan supports up to 100GB of traffic per month — plenty for any small business website. You only pay for the domain (about $12/year from Namecheap).</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Can I update the website later? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Yes. Go back to your customization page anytime, make changes, download the new HTML, and drag it into Netlify again. It replaces the old version instantly.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggleFaq(el) {
+    el.parentElement.classList.toggle('open');
+  }
+</script>
+</body>
+</html>

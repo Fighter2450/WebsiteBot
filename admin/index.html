@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebsiteBot — Command Center</title>
+<script src="https://unpkg.com/globe.gl"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #010814;
+    --panel: rgba(5, 20, 45, 0.92);
+    --border: rgba(0, 180, 255, 0.2);
+    --cyan: #00d4ff;
+    --blue: #0066ff;
+    --purple: #8b5cf6;
+    --green: #00ff88;
+    --orange: #ff6b35;
+    --text: #c8e0ff;
+    --dim: #4a6080;
+    --glow-cyan: 0 0 20px rgba(0,212,255,0.4);
+    --glow-green: 0 0 20px rgba(0,255,136,0.4);
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+  aside { height: calc(100vh - 60px); }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: grid;
+    grid-template-rows: 60px 1fr;
+    grid-template-columns: 1fr 380px;
+    grid-template-areas: "header header" "globe sidebar";
+    height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(0,10,25,0.95);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+  }
+  .logo { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: 900; color: var(--cyan); text-shadow: var(--glow-cyan); letter-spacing: 0.15em; }
+  .logo span { color: var(--purple); }
+  .header-status { display: flex; align-items: center; gap: 8px; font-family: 'Share Tech Mono', monospace; font-size: 0.78rem; color: var(--green); }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: var(--glow-green); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+  .header-time { font-family: 'Share Tech Mono', monospace; font-size: 0.78rem; color: var(--dim); }
+
+  /* GLOBE */
+  #globe-wrap { grid-area: globe; position: relative; overflow: hidden; }
+  #globe-container { width: 100%; height: 100%; }
+
+  .stats-overlay {
+    position: absolute; bottom: 24px; left: 24px;
+    display: flex; gap: 16px; z-index: 5;
+  }
+  .stat-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 22px;
+    backdrop-filter: blur(12px); min-width: 110px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); }
+  .stat-value { font-family:'Orbitron',monospace; font-size:2rem; font-weight:700; color:var(--cyan); text-shadow:var(--glow-cyan); line-height:1; }
+  .stat-value.green  { color:var(--green);  text-shadow:var(--glow-green); }
+  .stat-value.purple { color:var(--purple); text-shadow:0 0 20px rgba(139,92,246,0.4); }
+  .stat-value.orange { color:var(--orange); text-shadow:0 0 20px rgba(255,107,53,0.4); }
+  .stat-label { font-size:0.65rem; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:var(--dim); margin-top:6px; }
+
+  .globe-hint {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    font-family: 'Share Tech Mono', monospace; font-size: 0.72rem;
+    color: var(--dim); background: rgba(0,10,25,0.7);
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+    pointer-events: none;
+  }
+
+  /* SIDEBAR */
+  aside {
+    grid-area: sidebar; display: flex; flex-direction: column;
+    background: rgba(2,12,30,0.95); border-left: 1px solid var(--border);
+    overflow-y: auto; overflow-x: hidden;
+  }
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-track { background: transparent; }
+  aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .panel { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .panel-title {
+    font-family:'Orbitron',monospace; font-size:0.65rem; font-weight:700;
+    letter-spacing:0.2em; text-transform:uppercase; color:var(--cyan);
+    margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .panel-title::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border),transparent); }
+  .chart-wrap { height:140px; position:relative; }
+  .city-list { display:flex; flex-direction:column; gap:8px; }
+  .city-row {
+    display:flex; align-items:center; gap:10px; font-size:0.8rem;
+    cursor:pointer; padding:4px 6px; border-radius:6px;
+    transition: background 0.2s;
+  }
+  .city-row:hover { background: rgba(0,212,255,0.08); }
+  .city-name { flex:1; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .city-bar-wrap { flex:2; height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden; }
+  .city-bar { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--blue),var(--cyan)); box-shadow:0 0 8px rgba(0,212,255,0.5); transition:width 1s ease; }
+  .city-count { font-family:'Share Tech Mono',monospace; font-size:0.75rem; color:var(--cyan); min-width:24px; text-align:right; }
+  /* SCHEDULER PANEL */
+  .scheduler-panel { padding:16px 20px; border-bottom:1px solid var(--border); }
+  .sched-status-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .sched-status { display:flex; align-items:center; gap:8px; font-family:'Share Tech Mono',monospace; font-size:0.78rem; }
+  .sched-dot { width:8px; height:8px; border-radius:50%; background:var(--dim); }
+  .sched-dot.active { background:var(--green); box-shadow:var(--glow-green); animation:pulse 2s infinite; }
+  .sched-dot.running { background:var(--cyan); box-shadow:var(--glow-cyan); animation:pulse 0.8s infinite; }
+  .sched-buttons { display:flex; gap:6px; }
+  .sched-btn {
+    font-family:'Share Tech Mono',monospace; font-size:0.68rem; padding:5px 10px;
+    border-radius:5px; border:1px solid var(--border); background:transparent;
+    color:var(--text); cursor:pointer; transition:all 0.2s; white-space:nowrap;
+  }
+  .sched-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+  .sched-btn.danger { border-color:rgba(255,107,53,0.4); color:var(--orange); }
+  .sched-btn.danger:hover { border-color:var(--orange); background:rgba(255,107,53,0.1); }
+  .sched-btn.primary { border-color:rgba(0,212,255,0.5); color:var(--cyan); background:rgba(0,212,255,0.08); }
+  .sched-city-running {
+    font-size:0.72rem; color:var(--cyan); font-family:'Share Tech Mono',monospace;
+    padding:6px 10px; background:rgba(0,212,255,0.06); border-radius:6px;
+    border:1px solid rgba(0,212,255,0.15); margin-bottom:8px;
+    display:none;
+  }
+  .sched-city-running.show { display:block; }
+  .sched-next { font-size:0.7rem; color:var(--dim); margin-bottom:10px; }
+  .sched-next span { color:var(--purple); }
+  .sched-log { display:flex; flex-direction:column; gap:3px; height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:6px 8px; background:rgba(0,0,0,0.3); }
+  .sched-log::-webkit-scrollbar { width:4px; }
+  .sched-log::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .sched-log-entry { font-family:'Share Tech Mono',monospace; font-size:0.66rem; color:var(--dim); white-space:nowrap; }
+  .sched-log-entry.highlight { color:var(--text); }
+  .sched-settings { display:flex; gap:8px; margin-top:10px; }
+  .sched-select {
+    flex:1; background:rgba(0,10,30,0.8); border:1px solid var(--border);
+    color:var(--text); font-family:'Share Tech Mono',monospace; font-size:0.72rem;
+    padding:5px 8px; border-radius:5px; cursor:pointer;
+  }
+  .sched-select:focus { outline:none; border-color:var(--cyan); }
+
+  /* REGEN QUEUE */
+  .regen-panel { padding:14px 20px; border-bottom:1px solid var(--border); }
+  .regen-panel.hidden { display:none; }
+  .regen-queue { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .regen-item {
+    background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.25);
+    border-radius:7px; padding:8px 10px; display:flex; align-items:center; gap:8px;
+  }
+  .regen-item.done  { border-color:rgba(0,255,136,0.3); background:rgba(0,255,136,0.05); }
+  .regen-item.error { border-color:rgba(255,68,68,0.3);  background:rgba(255,68,68,0.05); }
+  .regen-spinner { width:14px; height:14px; border:2px solid rgba(124,58,237,0.3); border-top-color:#7c3aed; border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+  .regen-done-icon  { font-size:0.85rem; flex-shrink:0; }
+  .regen-info { flex:1; min-width:0; }
+  .regen-name { font-size:0.78rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .regen-note { font-size:0.68rem; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .regen-status-text { font-size:0.68rem; color:#7c3aed; }
+  .regen-item.done  .regen-status-text { color:var(--green); }
+  .regen-item.error .regen-status-text { color:#ff4444; }
+  .regen-dismiss { background:none; border:none; color:var(--dim); cursor:pointer; font-size:0.75rem; padding:2px; flex-shrink:0; }
+  .regen-dismiss:hover { color:var(--text); }
+
+  .activity-title {
+    font-family:'Orbitron',monospace; font-size:0.65rem; font-weight:700;
+    letter-spacing:0.2em; text-transform:uppercase; color:var(--cyan);
+    padding:14px 20px 10px; display:flex; align-items:center; gap:8px;
+    border-bottom:1px solid var(--border);
+  }
+  .activity-title::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border),transparent); }
+  .activity-feed { flex:1; min-height:220px; overflow-y:auto; padding:0 20px 20px; display:flex; flex-direction:column; gap:8px; }
+  .activity-feed::-webkit-scrollbar { width:4px; }
+  .activity-feed::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .activity-item {
+    background:rgba(0,180,255,0.03); border:1px solid rgba(0,180,255,0.08);
+    border-radius:8px; padding:10px 12px; cursor:pointer; transition:border-color 0.2s, background 0.2s;
+  }
+  .activity-item:hover { border-color:rgba(0,180,255,0.35); background:rgba(0,180,255,0.07); }
+  .activity-item-top { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .status-dot.sent         { background:var(--green); box-shadow:var(--glow-green); }
+  .status-dot.no_email     { background:var(--orange); }
+  .status-dot.dry_run      { background:var(--dim); }
+  .status-dot.email_failed { background:#ff4444; }
+  .activity-name { font-size:0.82rem; font-weight:600; color:var(--text); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .activity-badge { font-family:'Share Tech Mono',monospace; font-size:0.65rem; padding:2px 7px; border-radius:4px; font-weight:600; text-transform:uppercase; }
+  .badge-sent         { background:rgba(0,255,136,0.12); color:var(--green); }
+  .badge-no_email     { background:rgba(255,107,53,0.12); color:var(--orange); }
+  .badge-dry_run      { background:rgba(74,96,128,0.2);  color:var(--dim); }
+  .badge-email_failed { background:rgba(255,68,68,0.12); color:#ff4444; }
+  .activity-meta { font-size:0.72rem; color:var(--dim); display:flex; gap:8px; }
+  .activity-city { color:var(--purple); }
+
+  /* ── CITY PANEL (slides in over globe) ── */
+  #city-panel {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    width: 420px; background: rgba(2,12,35,0.97);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    z-index: 20; backdrop-filter: blur(16px);
+  }
+  #city-panel.open { transform: translateX(0); }
+
+  .city-panel-header {
+    padding: 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .city-panel-name { font-family:'Orbitron',monospace; font-size:1rem; font-weight:700; color:var(--cyan); text-shadow:var(--glow-cyan); }
+  .city-panel-sub { font-size:0.75rem; color:var(--dim); margin-top:4px; }
+  .close-btn {
+    background: none; border: 1px solid var(--border); color: var(--dim);
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    font-size: 1rem; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .close-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  .city-panel-stats {
+    display: flex; gap: 12px; padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mini-stat { flex: 1; text-align: center; }
+  .mini-stat-val { font-family:'Orbitron',monospace; font-size:1.4rem; font-weight:700; color:var(--cyan); }
+  .mini-stat-val.green { color:var(--green); }
+  .mini-stat-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--dim); margin-top:3px; }
+
+  .city-biz-list { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .city-biz-list::-webkit-scrollbar { width:4px; }
+  .city-biz-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .biz-card {
+    background: rgba(0,180,255,0.04); border: 1px solid rgba(0,180,255,0.1);
+    border-radius: 10px; padding: 14px; cursor: pointer;
+    transition: all 0.2s; display: flex; flex-direction: column; gap: 8px;
+  }
+  .biz-card:hover { border-color: var(--cyan); background: rgba(0,212,255,0.08); transform: translateX(4px); }
+  .biz-card-top { display:flex; align-items:center; gap:10px; }
+  .biz-icon { width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,var(--blue),var(--purple)); display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+  .biz-info { flex:1; min-width:0; }
+  .biz-name { font-weight:600; font-size:0.88rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .biz-category { font-size:0.72rem; color:var(--dim); text-transform:capitalize; margin-top:2px; }
+  .biz-card-bottom { display:flex; align-items:center; justify-content:space-between; }
+  .biz-status { font-family:'Share Tech Mono',monospace; font-size:0.65rem; padding:3px 8px; border-radius:4px; text-transform:uppercase; }
+  .biz-date { font-size:0.7rem; color:var(--dim); }
+  .biz-arrow { font-size:0.8rem; color:var(--cyan); opacity:0.5; }
+  .biz-card:hover .biz-arrow { opacity:1; }
+
+  /* ── BUSINESS DETAIL MODAL ── */
+  #biz-modal {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,5,15,0.9); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  #biz-modal.open { opacity: 1; pointer-events: all; }
+
+  .modal-box {
+    width: 90vw; max-width: 1200px; height: 80vh;
+    background: rgba(3,15,40,0.98); border: 1px solid var(--border);
+    border-radius: 16px; display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas: "mheader mheader" "preview details";
+    overflow: hidden; box-shadow: 0 0 60px rgba(0,100,255,0.2);
+  }
+
+  .modal-header {
+    grid-area: mheader; display:flex; align-items:center; justify-content:space-between;
+    padding: 0 24px; border-bottom: 1px solid var(--border);
+    background: rgba(0,10,25,0.8);
+  }
+  .modal-title { font-family:'Orbitron',monospace; font-size:0.9rem; font-weight:700; color:var(--cyan); }
+  .modal-close {
+    background:none; border:1px solid var(--border); color:var(--dim);
+    padding:6px 14px; border-radius:6px; cursor:pointer; font-size:0.8rem;
+    font-family:'Share Tech Mono',monospace; transition:all 0.2s;
+  }
+  .modal-close:hover { border-color:var(--cyan); color:var(--cyan); }
+
+  .preview-pane {
+    grid-area: preview; position:relative; background:#000; overflow:hidden;
+    border-right: 1px solid var(--border);
+  }
+  .preview-pane iframe { width:100%; height:100%; border:none; }
+  .no-preview {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    height:100%; gap:12px; color:var(--dim);
+    font-family:'Share Tech Mono',monospace; font-size:0.85rem;
+  }
+  .no-preview-icon { font-size:3rem; opacity:0.3; }
+
+  .details-pane {
+    grid-area: details; overflow-y:auto; padding:24px;
+    display:flex; flex-direction:column; gap:20px;
+  }
+  .details-pane::-webkit-scrollbar { width:4px; }
+  .details-pane::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .detail-section { display:flex; flex-direction:column; gap:10px; }
+  .detail-section-title { font-family:'Orbitron',monospace; font-size:0.6rem; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--purple); }
+  .detail-row { display:flex; flex-direction:column; gap:2px; }
+  .detail-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--dim); }
+  .detail-value { font-size:0.85rem; color:var(--text); font-weight:500; word-break:break-all; }
+  .detail-value a { color:var(--cyan); text-decoration:none; }
+  .detail-value a:hover { text-decoration:underline; }
+
+  .status-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 14px; border-radius:20px; font-size:0.75rem;
+    font-weight:700; text-transform:uppercase; letter-spacing:0.1em;
+    width: fit-content;
+  }
+  .chip-sent         { background:rgba(0,255,136,0.12); color:var(--green); border:1px solid rgba(0,255,136,0.3); }
+  .chip-no_email     { background:rgba(255,107,53,0.12); color:var(--orange); border:1px solid rgba(255,107,53,0.3); }
+  .chip-dry_run      { background:rgba(74,96,128,0.15);  color:var(--dim);    border:1px solid rgba(74,96,128,0.3); }
+  .chip-email_failed { background:rgba(255,68,68,0.12);  color:#ff4444;       border:1px solid rgba(255,68,68,0.3); }
+
+  .open-preview-btn {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:12px; border-radius:8px; font-size:0.8rem; font-weight:600;
+    background:linear-gradient(135deg,var(--blue),var(--purple));
+    color:#fff; border:none; cursor:pointer; text-decoration:none;
+    transition:opacity 0.2s; font-family:'Share Tech Mono',monospace;
+  }
+  .open-preview-btn:hover { opacity:0.85; }
+
+  /* scanlines */
+  body::after {
+    content:''; position:fixed; inset:0;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,0.012) 2px,rgba(0,212,255,0.012) 4px);
+    pointer-events:none; z-index:100;
+  }
+
+  .category-icon { font-size:1.3rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">WEBSITE<span>BOT</span> // COMMAND CENTER</div>
+  <div class="header-status"><div class="pulse"></div>SYSTEM ONLINE</div>
+  <div class="header-time" id="clock">--:--:--</div>
+</header>
+
+<div id="globe-wrap">
+  <div id="globe-container"></div>
+  <div class="globe-hint">Click any city marker to explore</div>
+  <div class="stats-overlay">
+    <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Processed</div></div>
+    <div class="stat-card"><div class="stat-value green" id="stat-sent">0</div><div class="stat-label">Emails Sent</div></div>
+    <div class="stat-card"><div class="stat-value purple" id="stat-deployed">0</div><div class="stat-label">Sites Live</div></div>
+    <div class="stat-card"><div class="stat-value orange" id="stat-cities">0</div><div class="stat-label">Cities</div></div>
+  </div>
+
+  <!-- City Panel -->
+  <div id="city-panel">
+    <div class="city-panel-header">
+      <div>
+        <div class="city-panel-name" id="cp-name">—</div>
+        <div class="city-panel-sub" id="cp-sub">Loading...</div>
+      </div>
+      <button class="close-btn" onclick="closeCity()">✕</button>
+    </div>
+    <div class="city-panel-stats">
+      <div class="mini-stat"><div class="mini-stat-val" id="cp-total">0</div><div class="mini-stat-label">Found</div></div>
+      <div class="mini-stat"><div class="mini-stat-val green" id="cp-sent">0</div><div class="mini-stat-label">Emailed</div></div>
+      <div class="mini-stat"><div class="mini-stat-val" id="cp-live">0</div><div class="mini-stat-label">Sites Live</div></div>
+    </div>
+    <div class="city-biz-list" id="city-biz-list"></div>
+  </div>
+</div>
+
+<aside>
+  <div class="panel">
+    <div class="panel-title">Output by City</div>
+    <div class="chart-wrap"><canvas id="city-chart"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">City Breakdown</div>
+    <div class="city-list" id="city-list"></div>
+  </div>
+  <div class="scheduler-panel">
+    <div class="panel-title">Auto-Scheduler</div>
+    <div class="sched-status-row">
+      <div class="sched-status">
+        <div class="sched-dot" id="sched-dot"></div>
+        <span id="sched-status-text">Idle</span>
+      </div>
+      <div class="sched-buttons">
+        <button class="sched-btn primary" onclick="runNow()">▶ Run Now</button>
+        <button class="sched-btn" onclick="testEmail()" title="Send a test email to yourself">📧 Test</button>
+        <button class="sched-btn danger" id="toggle-btn" onclick="toggleScheduler()">⏸ Pause</button>
+      </div>
+    </div>
+    <div class="sched-city-running" id="sched-city-running">📍 <span id="sched-current-city">—</span> — <span id="sched-current-cat">—</span></div>
+    <div class="sched-next">Next auto-run: <span id="sched-next-run">—</span></div>
+    <div style="font-size:0.7rem;color:var(--dim);margin-bottom:10px" id="sched-scope">Scanning all categories across all 25 cities automatically</div>
+    <div class="sched-settings">
+      <select class="sched-select" id="sel-interval" onchange="saveSettings()">
+        <option value="1">Every 1hr</option>
+        <option value="2" selected>Every 2hrs</option>
+        <option value="4">Every 4hrs</option>
+        <option value="6">Every 6hrs</option>
+        <option value="12">Every 12hrs</option>
+      </select>
+      <select class="sched-select" id="sel-limit" onchange="saveSettings()">
+        <option value="5">5/city</option>
+        <option value="10" selected>10/city</option>
+        <option value="20">20/city</option>
+      </select>
+    </div>
+    <div style="margin-top:10px"><div class="panel-title" style="margin-bottom:6px">Bot Log</div>
+    <div class="sched-log" id="sched-log"></div></div>
+  </div>
+
+  <div class="regen-panel hidden" id="regen-panel">
+    <div class="panel-title">✨ Regenerating</div>
+    <div class="regen-queue" id="regen-queue"></div>
+  </div>
+
+  <div class="activity-title">Live Activity Feed</div>
+  <div class="activity-feed" id="activity-feed"></div>
+</aside>
+
+<!-- Business Detail Modal -->
+<div id="biz-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Business Details</div>
+      <button class="modal-close" onclick="closeModal()">✕ Close</button>
+    </div>
+    <div class="preview-pane" id="preview-pane"></div>
+    <div class="details-pane" id="details-pane"></div>
+  </div>
+</div>
+
+<script>
+  // Clock
+  function tick() { document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false}); }
+  tick(); setInterval(tick, 1000);
+
+  // Category icons
+  const ICONS = { restaurant:'🍽️', plumber:'🔧', salon:'💇', gym:'💪', cafe:'☕', bar:'🍺', bakery:'🥐', dentist:'🦷', lawyer:'⚖️', default:'🏢' };
+  function icon(cat) { return ICONS[cat] || ICONS.default; }
+
+  // Globe
+  const globeEl = document.getElementById('globe-container');
+  let globeCities = [];
+
+  const globe = Globe()(globeEl)
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+    .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+    .showAtmosphere(true)
+    .atmosphereColor('#0066ff')
+    .atmosphereAltitude(0.18)
+    .pointsData([])
+    .pointLat('lat').pointLng('lng')
+    .pointAltitude(0.01)
+    .pointRadius(d => 0.5 + (d.total || 1) * 0.1)
+    .pointColor(d => d.sent > 0 ? '#00ff88' : '#00d4ff')
+    .pointLabel(d => `<div style="font-family:monospace;background:rgba(0,10,30,0.95);padding:8px 14px;border-radius:8px;border:1px solid #00d4ff;color:#00d4ff;font-size:12px;pointer-events:none"><b>${d.city}</b><br>Processed: ${d.total} &nbsp;|&nbsp; Emailed: ${d.sent}<br><span style="color:#8b5cf6;font-size:11px">Click to explore →</span></div>`)
+    .onPointClick(d => openCity(d.city))
+    .arcsData([])
+    .arcStartLat('startLat').arcStartLng('startLng')
+    .arcEndLat('endLat').arcEndLng('endLng')
+    .arcColor(() => ['rgba(0,102,255,0)','rgba(0,212,255,0.9)','rgba(0,255,136,0)'])
+    .arcDashLength(0.4).arcDashGap(0.2).arcDashAnimateTime(2000).arcStroke(0.5)
+    .arcAltitudeAutoScale(0.3);
+
+  globe.controls().autoRotate = true;
+  globe.controls().autoRotateSpeed = 0.4;
+  globe.pointOfView({ lat: 39.5, lng: -98.35, altitude: 2.2 }, 1000);
+
+  function resizeGlobe() { globe.width(globeEl.clientWidth).height(globeEl.clientHeight); }
+  resizeGlobe(); window.addEventListener('resize', resizeGlobe);
+
+  // Chart
+  const chartCtx = document.getElementById('city-chart').getContext('2d');
+  const cityChart = new Chart(chartCtx, {
+    type: 'bar',
+    data: { labels: [], datasets: [
+      { label:'Sent', data:[], backgroundColor:'rgba(0,255,136,0.7)', borderColor:'#00ff88', borderWidth:1, borderRadius:4 },
+      { label:'Total', data:[], backgroundColor:'rgba(0,212,255,0.2)', borderColor:'rgba(0,212,255,0.5)', borderWidth:1, borderRadius:4 }
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ ticks:{color:'#4a6080',font:{size:9}}, grid:{color:'rgba(0,180,255,0.05)'} },
+        y:{ ticks:{color:'#4a6080',font:{size:9}}, grid:{color:'rgba(0,180,255,0.05)'}, beginAtZero:true }
+      }
+    }
+  });
+
+  // ── City panel ──
+  async function openCity(cityName) {
+    const panel = document.getElementById('city-panel');
+    document.getElementById('cp-name').textContent = cityName.split(',')[0];
+    document.getElementById('cp-sub').textContent = 'Loading businesses...';
+    document.getElementById('city-biz-list').innerHTML = '';
+    panel.classList.add('open');
+    globe.controls().autoRotate = false;
+
+    try {
+      const r = await fetch(`/api/city/${encodeURIComponent(cityName)}`);
+      const bizzes = await r.json();
+      const sent = bizzes.filter(b => b.status === 'sent').length;
+      const live = bizzes.filter(b => b.preview_url && b.preview_url.startsWith('http')).length;
+
+      document.getElementById('cp-sub').textContent = `${bizzes.length} businesses found`;
+      document.getElementById('cp-total').textContent = bizzes.length;
+      document.getElementById('cp-sent').textContent = sent;
+      document.getElementById('cp-live').textContent = live;
+
+      const list = document.getElementById('city-biz-list');
+      list.innerHTML = bizzes.length === 0
+        ? '<div style="color:var(--dim);text-align:center;padding:40px;font-size:0.85rem">No businesses recorded yet</div>'
+        : bizzes.map(b => `
+          <div class="biz-card" onclick='openBiz(${JSON.stringify(JSON.stringify(b))})'>
+            <div class="biz-card-top">
+              <div class="biz-icon">${icon(b.category)}</div>
+              <div class="biz-info">
+                <div class="biz-name">${b.name}</div>
+                <div class="biz-category">${b.category}</div>
+              </div>
+              <div class="biz-arrow">→</div>
+            </div>
+            <div class="biz-card-bottom">
+              <div class="biz-status ${`badge-${b.status}`}">${b.status.replace('_',' ')}</div>
+              <div class="biz-date">${b.created_at ? b.created_at.slice(0,10) : ''}</div>
+            </div>
+          </div>`).join('');
+    } catch(e) {
+      document.getElementById('cp-sub').textContent = 'Error loading data';
+    }
+  }
+
+  function closeCity() {
+    document.getElementById('city-panel').classList.remove('open');
+    globe.controls().autoRotate = true;
+  }
+
+  // ── Business modal ──
+  let currentPlaceId = null;
+
+  async function openBiz(jsonStr) {
+    const b = JSON.parse(jsonStr);
+    currentPlaceId = b.place_id;
+    document.getElementById('modal-title').textContent = b.name;
+    document.getElementById('biz-modal').classList.add('open');
+
+    // Preview pane — load latest HTML from DB first, fall back to preview_url
+    const preview = document.getElementById('preview-pane');
+    preview.innerHTML = `<div class="no-preview"><div class="no-preview-icon" style="font-size:1.5rem">⏳</div><div>Loading preview...</div></div>`;
+
+    // Use /preview/<token> if we have a token, otherwise fall back to preview_url
+    if (b.token) {
+      preview.innerHTML = `<iframe id="modal-iframe" src="/preview/${b.token}" sandbox="allow-scripts allow-same-origin"></iframe>`;
+    } else if (b.preview_url && b.preview_url.startsWith('http')) {
+      preview.innerHTML = `<iframe id="modal-iframe" src="${b.preview_url}" sandbox="allow-scripts allow-same-origin"></iframe>`;
+    } else {
+      preview.innerHTML = `<div class="no-preview"><div class="no-preview-icon">🌐</div><div>No preview available</div></div>`;
+    }
+
+    // Details pane
+    const statusChip = `<div class="status-chip chip-${b.status}"><div class="status-dot ${b.status}"></div>${b.status.replace('_',' ')}</div>`;
+    const previewBtn = b.preview_url && b.preview_url.startsWith('http')
+      ? `<a href="${b.preview_url}" target="_blank" class="open-preview-btn">↗ Open Live Preview</a>` : '';
+
+    document.getElementById('details-pane').innerHTML = `
+      <div class="detail-section">
+        <div class="detail-section-title">Status</div>
+        ${statusChip}
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Business Info</div>
+        <div class="detail-row"><div class="detail-label">Name</div><div class="detail-value">${b.name}</div></div>
+        <div class="detail-row"><div class="detail-label">Category</div><div class="detail-value">${b.category}</div></div>
+        <div class="detail-row"><div class="detail-label">City</div><div class="detail-value">${b.city}</div></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Contact</div>
+        <div class="detail-row"><div class="detail-label">Email Sent To</div><div class="detail-value">${b.email || '—'}</div></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Website</div>
+        <div class="detail-row"><div class="detail-label">Preview URL</div><div class="detail-value"><a href="${b.preview_url || '#'}" target="_blank">${b.preview_url ? 'View →' : '—'}</a></div></div>
+        <div class="detail-row"><div class="detail-label">Processed</div><div class="detail-value">${b.created_at || '—'}</div></div>
+      </div>
+      <div class="detail-section" style="border-top:1px solid var(--border);padding-top:14px">
+        <div class="detail-section-title">✨ Regenerate Website</div>
+        <textarea id="regen-notes" placeholder="Notes for AI (optional)&#10;e.g. &quot;make the hero darker&quot;, &quot;add a gallery section&quot;, &quot;use blue instead of red&quot;" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:0.72rem;padding:8px 10px;resize:vertical;min-height:80px;margin-bottom:8px;outline:none" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        <button onclick="regenSite('${b.place_id}')" id="regen-btn" style="width:100%;padding:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:#fff;border:none;border-radius:7px;font-weight:700;font-size:0.82rem;cursor:pointer;font-family:'Share Tech Mono',monospace;letter-spacing:0.05em;transition:opacity 0.2s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">✨ REGENERATE WITH AI</button>
+        <div id="regen-status" style="font-size:0.72rem;color:var(--dim);text-align:center;margin-top:6px;min-height:16px"></div>
+      </div>
+      ${previewBtn}
+    `;
+  }
+
+  // ── Regen queue ─────────────────────────────────────────────────
+  const regenQueue = {};
+
+  function addRegenItem(placeId, name, notes) {
+    const id = 'rq-' + placeId.replace(/[^a-z0-9]/gi, '');
+    regenQueue[id] = { placeId, name, notes, state: 'running', html: '', token: '' };
+    renderRegenQueue();
+    return id;
+  }
+
+  function updateRegenItem(id, state, msg, token) {
+    if (!regenQueue[id]) return;
+    regenQueue[id].state = state;
+    regenQueue[id].msg   = msg;
+    if (token) regenQueue[id].token = token;
+    renderRegenQueue();
+  }
+
+  function renderRegenQueue() {
+    const panel = document.getElementById('regen-panel');
+    const queue = document.getElementById('regen-queue');
+    const items = Object.entries(regenQueue);
+    if (!items.length) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    queue.innerHTML = items.map(([id, item]) => {
+      const isDone    = item.state === 'done';
+      const isRunning = item.state === 'running';
+      const icon = isRunning ? `<div class="regen-spinner"></div>`
+        : isDone ? `<span style="color:var(--green);font-size:0.9rem">✓</span>`
+        : `<span style="color:#ff4444;font-size:0.9rem">✕</span>`;
+      const stateText = isRunning ? 'Building with AI...'
+        : isDone ? 'Done — click to view'
+        : (item.msg || 'Failed');
+      const clickable = isDone ? `onclick="previewRegen('${id}')" style="cursor:pointer"` : '';
+      return `<div class="regen-item ${isRunning ? '' : item.state}" id="${id}" ${clickable}>
+        ${icon}
+        <div class="regen-info">
+          <div class="regen-name">${item.name}</div>
+          ${item.notes ? `<div class="regen-note">"${item.notes}"</div>` : ''}
+          <div class="regen-status-text">${stateText}</div>
+        </div>
+        ${!isRunning ? `<button class="regen-dismiss" onclick="event.stopPropagation();dismissRegen('${id}')" title="Dismiss">✕</button>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  async function previewRegen(id) {
+    const item = regenQueue[id];
+    if (!item) return;
+    document.getElementById('modal-title').textContent = item.name;
+    document.getElementById('biz-modal').classList.add('open');
+    currentPlaceId = item.placeId;
+    const preview = document.getElementById('preview-pane');
+
+    if (item.token) {
+      preview.innerHTML = `<iframe id="modal-iframe" src="/preview/${item.token}" sandbox="allow-scripts allow-same-origin"></iframe>`;
+    } else {
+      preview.innerHTML = `<div class="no-preview"><div class="no-preview-icon">🌐</div><div>Could not load preview</div></div>`;
+    }
+
+    document.getElementById('details-pane').innerHTML = `
+      <div class="detail-section">
+        <div class="detail-section-title">Status</div>
+        <div style="color:var(--green);font-family:'Share Tech Mono',monospace;font-size:0.8rem">Regenerated successfully</div>
+      </div>
+      <div class="detail-section" style="border-top:1px solid var(--border);padding-top:14px">
+        <div class="detail-section-title">✨ Regenerate Again</div>
+        <textarea id="regen-notes" placeholder="Notes for AI..." style="width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:0.72rem;padding:8px 10px;resize:vertical;min-height:70px;margin-bottom:8px;outline:none" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        <button onclick="regenSite('${item.placeId}')" id="regen-btn" style="width:100%;padding:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:#fff;border:none;border-radius:7px;font-weight:700;font-size:0.82rem;cursor:pointer;font-family:'Share Tech Mono',monospace;letter-spacing:0.05em">✨ REGENERATE WITH AI</button>
+        <div id="regen-status" style="font-size:0.72rem;color:var(--dim);text-align:center;margin-top:6px;min-height:16px"></div>
+      </div>`;
+  }
+
+  function dismissRegen(id) {
+    delete regenQueue[id];
+    renderRegenQueue();
+  }
+
+  async function regenSite(placeId) {
+    const notesEl = document.getElementById('regen-notes');
+    const btn     = document.getElementById('regen-btn');
+    const statusEl = document.getElementById('regen-status');
+    const notes   = notesEl ? notesEl.value.trim() : '';
+    const nameEl  = document.getElementById('modal-title');
+    const name    = nameEl ? nameEl.textContent : placeId;
+
+    // Add to queue and let user close modal
+    const qid = addRegenItem(placeId, name, notes);
+    if (btn) { btn.disabled = true; btn.textContent = 'Queued...'; }
+    if (statusEl) { statusEl.style.color = 'var(--cyan)'; statusEl.textContent = 'Running in background — you can close this modal'; }
+
+    try {
+      const r = await fetch('/api/regen', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ place_id: placeId, notes }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        updateRegenItem(qid, 'done', '', d.token);
+        if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✓ Done! Click it in the sidebar to view.'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✨ REGENERATE AGAIN'; }
+        // Update the modal iframe if still open for this business
+        if (currentPlaceId === placeId && d.token) {
+          const iframe = document.getElementById('modal-iframe');
+          if (iframe) iframe.src = `/preview/${d.token}?t=${Date.now()}`;
+        }
+      } else {
+        updateRegenItem(qid, 'error', d.error || 'Failed');
+        if (statusEl) { statusEl.style.color = '#ff4444'; statusEl.textContent = d.error || 'Failed'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✨ REGENERATE WITH AI'; }
+      }
+    } catch(e) {
+      updateRegenItem(qid, 'error', e.message);
+      if (statusEl) { statusEl.style.color = '#ff4444'; statusEl.textContent = 'Error: ' + e.message; }
+      if (btn) { btn.disabled = false; btn.textContent = '✨ REGENERATE WITH AI'; }
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('biz-modal').classList.remove('open');
+    document.getElementById('preview-pane').innerHTML = '';
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('biz-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('biz-modal')) closeModal();
+  });
+
+  // ── Data refresh ──
+  async function fetchStats() {
+    try {
+      const d = await (await fetch('/api/stats')).json();
+      document.getElementById('stat-total').textContent = d.total;
+      document.getElementById('stat-sent').textContent  = d.sent;
+      document.getElementById('stat-deployed').textContent = d.deployed;
+      document.getElementById('stat-cities').textContent = d.cities;
+    } catch(e) {}
+  }
+
+  async function fetchCities() {
+    try {
+      const cities = await (await fetch('/api/cities')).json();
+      globeCities = cities;
+      globe.pointsData(cities);
+
+      const labels = cities.map(c => c.city.split(',')[0]);
+      cityChart.data.labels = labels;
+      cityChart.data.datasets[0].data = cities.map(c => c.sent);
+      cityChart.data.datasets[1].data = cities.map(c => c.total);
+      cityChart.update();
+
+      const max = Math.max(...cities.map(c => c.total), 1);
+      document.getElementById('city-list').innerHTML = cities.map(c => `
+        <div class="city-row" onclick="openCity('${c.city}')">
+          <div class="city-name">${c.city.split(',')[0]}</div>
+          <div class="city-bar-wrap"><div class="city-bar" style="width:${(c.total/max*100).toFixed(0)}%"></div></div>
+          <div class="city-count">${c.total}</div>
+        </div>`).join('');
+    } catch(e) {}
+  }
+
+  async function fetchArcs() {
+    try {
+      const arcs = await (await fetch('/api/arcs')).json();
+      globe.arcsData(arcs);
+    } catch(e) {}
+  }
+
+  async function fetchActivity() {
+    try {
+      const items = await (await fetch('/api/activity')).json();
+      document.getElementById('activity-feed').innerHTML = items.map(b => `
+        <div class="activity-item" onclick='openBiz(${JSON.stringify(JSON.stringify(b))})'>
+          <div class="activity-item-top">
+            <div class="status-dot ${b.status}"></div>
+            <div class="activity-name">${b.name}</div>
+            <div class="activity-badge badge-${b.status}">${b.status.replace('_',' ')}</div>
+          </div>
+          <div class="activity-meta">
+            <span class="activity-city">${b.city.split(',')[0]}</span>
+            <span>${b.category}</span>
+            <span>${b.created_at ? b.created_at.slice(0,10) : ''}</span>
+            ${b.preview_url && b.preview_url.startsWith('http') ? '<span style="color:var(--cyan)">↗ preview</span>' : ''}
+          </div>
+        </div>`).join('');
+    } catch(e) {}
+  }
+
+  // ── Scheduler ──
+  async function fetchScheduler() {
+    try {
+      const s = await (await fetch('/api/scheduler')).json();
+      const dot  = document.getElementById('sched-dot');
+      const text = document.getElementById('sched-status-text');
+      const btn  = document.getElementById('toggle-btn');
+      const cityRow = document.getElementById('sched-city-running');
+      const citySpan = document.getElementById('sched-current-city');
+
+      if (s.running) {
+        dot.className = 'sched-dot running';
+        text.textContent = 'Running...';
+        cityRow.classList.add('show');
+        citySpan.textContent = s.current_city || '—';
+        document.getElementById('sched-current-cat').textContent = s.current_category || '—';
+      } else if (s.enabled) {
+        dot.className = 'sched-dot active';
+        text.textContent = 'Active — auto-running';
+        cityRow.classList.remove('show');
+      } else {
+        dot.className = 'sched-dot';
+        text.textContent = 'Paused';
+        cityRow.classList.remove('show');
+      }
+
+      btn.textContent = s.enabled ? '⏸ Pause' : '▶ Resume';
+      btn.className   = s.enabled ? 'sched-btn danger' : 'sched-btn primary';
+
+      if (s.next_run) {
+        const nxt = new Date(s.next_run);
+        document.getElementById('sched-next-run').textContent = nxt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      }
+
+      // Sync selects
+      if (s.business_type) document.getElementById('sel-type').value = s.business_type;
+      if (s.interval_hours) document.getElementById('sel-interval').value = s.interval_hours;
+      if (s.limit_per_city) document.getElementById('sel-limit').value = s.limit_per_city;
+
+      // Log
+      document.getElementById('sched-log').innerHTML = s.log.map((l,i) =>
+        `<div class="sched-log-entry ${i===0?'highlight':''}">${l}</div>`
+      ).join('');
+    } catch(e) {}
+  }
+
+  async function testEmail() {
+    const r = await fetch('/api/test-email', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) alert(`✅ Test email sent to ${d.sent_to} — check your inbox!`);
+    else alert(`❌ SMTP failed: ${d.error}`);
+  }
+
+  async function toggleScheduler() {
+    await fetch('/api/scheduler/toggle', {method:'POST'});
+    fetchScheduler();
+  }
+
+  async function runNow() {
+    await fetch('/api/scheduler/run-now', {method:'POST'});
+    setTimeout(fetchScheduler, 500);
+  }
+
+  async function saveSettings() {
+    await fetch('/api/scheduler/settings', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        business_type:  document.getElementById('sel-type').value,
+        interval_hours: document.getElementById('sel-interval').value,
+        limit_per_city: document.getElementById('sel-limit').value,
+      })
+    });
+  }
+
+  async function refresh() {
+    await Promise.all([fetchStats(), fetchCities(), fetchArcs(), fetchActivity(), fetchScheduler()]);
+  }
+
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>
