@@ -9,7 +9,7 @@ Requirements:
 - Modern, beautiful design with embedded CSS (no external dependencies except Google Fonts CDN)
 - Mobile responsive
 - Sections: sticky nav, full-width hero with colored background (NOT white), about, services/specialties, hours & contact with Google Maps link, footer
-- Color scheme that fits the business type — warm for restaurants, bold for trades, clean for health/medical, etc.
+- CRITICAL: Use the EXACT hex color codes provided in the prompt. Do NOT substitute your own colors. The palette is pre-selected — your job is to apply it beautifully, not choose it.
 - Real content only — use the actual business name, address, phone, hours, and reviews provided
 - Output ONLY raw HTML from <!DOCTYPE html> to </html>. No markdown fences, no explanation.
 
@@ -279,9 +279,9 @@ Hours:
 {f"Customer reviews to use as testimonials:{chr(10)}{reviews_txt}" if reviews_txt else ""}
 {logo_txt}{photos_txt}
 
-Color palette — use these exact colors, do not substitute:
-- Dark sections / hero background: {dark}
-- Light sections background: {light}
+MANDATORY color palette — you MUST use these exact hex codes. Do not pick different colors based on business type:
+- Hero / dark sections background color: {dark}
+- Body / light sections background color: {light}
 - Headline font: {font} (load from Google Fonts)
 
 Language: Write ALL text in {language_name}. Every heading, paragraph, button, nav link, and footer must be in {language_name}.
