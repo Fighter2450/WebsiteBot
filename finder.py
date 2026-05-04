@@ -100,74 +100,66 @@ def find_businesses_without_websites(api_key: str, city: str, business_type: str
 
     results = []
     seen_ids = set()
+    deadline = time.time() + 90  # hard cap: stop searching after 90 seconds
 
     for lat, lng in neighborhoods:
-        if len(results) >= limit:
+        if len(results) >= limit or time.time() > deadline:
             break
 
-        next_page_token = None
-        pages_checked = 0
+        try:
+            response = gmaps.places_nearby(
+                location=(lat, lng),
+                rank_by="distance",
+                type=business_type,
+            )
+        except Exception as e:
+            print(f"  [warn] places_nearby failed: {e}")
+            continue
 
-        while len(results) < limit and pages_checked < 3:
-            if next_page_token:
-                kwargs = {"page_token": next_page_token}
-                time.sleep(2)
-            else:
-                kwargs = {
-                    "location": (lat, lng),
-                    "rank_by": "distance",   # nearest first = more local/smaller
-                    "type": business_type,
-                }
+        candidates = response.get("results", [])
+        if not candidates:
+            continue
 
-            response = gmaps.places_nearby(**kwargs)
-            candidates = response.get("results", [])
-            pages_checked += 1
-
-            if not candidates:
+        for place in candidates:
+            if len(results) >= limit or time.time() > deadline:
                 break
 
-            for place in candidates:
-                if len(results) >= limit:
-                    break
+            place_id = place["place_id"]
+            if place_id in seen_ids:
+                continue
+            seen_ids.add(place_id)
 
-                place_id = place["place_id"]
-                if place_id in seen_ids:
-                    continue
-                seen_ids.add(place_id)
+            # Quick check — skip if the summary already shows a website
+            if place.get("website"):
+                continue
 
-                # Quick check — skip if the summary already shows a website
-                if place.get("website"):
-                    continue
+            try:
+                detail = gmaps.place(place_id=place_id, fields=DETAIL_FIELDS).get("result", {})
+            except Exception as e:
+                print(f"  [warn] Could not fetch details for {place.get('name')}: {e}")
+                continue
 
-                try:
-                    detail = gmaps.place(place_id=place_id, fields=DETAIL_FIELDS).get("result", {})
-                except Exception as e:
-                    print(f"  [warn] Could not fetch details for {place.get('name')}: {e}")
-                    continue
+            if detail.get("website"):
+                continue
 
-                if detail.get("website"):
-                    continue
+            if _is_chain(detail.get("name", place.get("name", ""))):
+                continue
 
-                if _is_chain(detail.get("name", place.get("name", ""))):
-                    continue
+            name = detail.get("name", place.get("name", ""))
+            print(f"  [found] {name} — no website")
+            results.append({
+                "place_id": place_id,
+                "name": name,
+                "address": detail.get("formatted_address", ""),
+                "phone": detail.get("formatted_phone_number", ""),
+                "hours": detail.get("opening_hours", {}).get("weekday_text", []),
+                "rating": detail.get("rating"),
+                "review_count": detail.get("user_ratings_total", 0),
+                "reviews": [r.get("text", "") for r in detail.get("reviews", [])[:3]],
+                "category": business_type,
+                "city": city,
+            })
 
-                name = detail.get("name", place.get("name", ""))
-                print(f"  [found] {name} — no website")
-                results.append({
-                    "place_id": place_id,
-                    "name": name,
-                    "address": detail.get("formatted_address", ""),
-                    "phone": detail.get("formatted_phone_number", ""),
-                    "hours": detail.get("opening_hours", {}).get("weekday_text", []),
-                    "rating": detail.get("rating"),
-                    "review_count": detail.get("user_ratings_total", 0),
-                    "reviews": [r.get("text", "") for r in detail.get("reviews", [])[:3]],
-                    "category": business_type,
-                    "city": city,
-                })
-
-            next_page_token = response.get("next_page_token")
-            if not next_page_token:
-                break
-
+    if time.time() > deadline:
+        print(f"  [warn] Search hit 90s deadline — returning {len(results)} results")
     return results

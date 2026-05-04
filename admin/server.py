@@ -67,7 +67,7 @@ def log(msg):
     print(entry)
 
 
-MAX_PER_SEARCH = 10  # Keep low: each business takes ~2 min (Claude + email finder)
+MAX_PER_SEARCH = 5   # finder=90s + 5×(45s Claude + 30s email) = ~475s, fits in 600s timeout
 
 def run_bot_cycle():
     scheduler_state["running"] = True
@@ -91,7 +91,7 @@ def run_bot_cycle():
                     [sys.executable, BOT_MAIN,
                      "--city", city, "--type", category, "--limit", str(MAX_PER_SEARCH)],
                     cwd=os.path.join(os.path.dirname(__file__), ".."),
-                    capture_output=True, text=True, timeout=1800,  # 30 min: 10 businesses × ~2 min each
+                    capture_output=True, text=True, timeout=600,   # 10 min; finder capped at 90s internally
                 )
                 found    = result.stdout.count("[found]")
                 sent     = result.stdout.count("[email] Sent!")
