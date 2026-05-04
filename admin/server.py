@@ -364,6 +364,59 @@ def regen_site():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/regen-all", methods=["POST"])
+def regen_all():
+    """Re-generate every site with the current palette logic (fixes old red/white sites)."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY not set"}), 500
+    con = get_db()
+    if not con:
+        return jsonify({"error": "No database"}), 500
+    rows = con.execute("SELECT place_id, name, city, category FROM businesses ORDER BY created_at DESC").fetchall()
+    con.close()
+    total = len(rows)
+    if total == 0:
+        return jsonify({"ok": True, "regenerated": 0})
+
+    def _run():
+        ai_client = anthropic.Anthropic(api_key=api_key)
+        done = 0
+        for r in rows:
+            try:
+                con2 = get_db()
+                row = con2.execute("SELECT * FROM businesses WHERE place_id=?", (r["place_id"],)).fetchone()
+                con2.close()
+                if not row:
+                    continue
+                biz = dict(row)
+                language = get_city_info(biz.get("city","")).get("lang","en")
+                business = {
+                    "place_id": biz.get("place_id",""), "name": biz.get("name",""),
+                    "address": biz.get("address",""), "phone": biz.get("phone",""),
+                    "hours": [], "rating": biz.get("rating"), "review_count": biz.get("review_count",0),
+                    "reviews": [], "category": biz.get("category",""), "city": biz.get("city",""),
+                    "tagline": biz.get("tagline",""), "description": biz.get("description",""),
+                    "logo_b64": "", "photos_b64": [],
+                }
+                html = generate_website(ai_client, business, existing_html="", language=language)
+                token = biz.get("token","")
+                if token:
+                    save_custom_html(token, html)
+                con3 = get_db()
+                con3.execute("UPDATE businesses SET html=? WHERE place_id=?", (html, biz["place_id"]))
+                con3.commit()
+                con3.close()
+                done += 1
+                log(f"🎨 Regen {done}/{total}: {biz.get('name')}")
+            except Exception as e:
+                log(f"⚠️ Regen failed for {r['name']}: {e}")
+        log(f"✅ Regen-all complete: {done}/{total} sites updated")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"ok": True, "queued": total})
+
+
 @app.route("/api/business/<place_id>/html")
 def business_html(place_id):
     con = get_db()

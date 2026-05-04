@@ -406,6 +406,7 @@
       <div class="sched-buttons">
         <button class="sched-btn primary" onclick="runNow()">▶ Run Now</button>
         <button class="sched-btn" onclick="testEmail()" title="Send a test email to yourself">📧 Test</button>
+        <button class="sched-btn" onclick="regenAll()" title="Re-generate all existing sites with new color palettes">🎨 Regen All</button>
         <button class="sched-btn danger" id="toggle-btn" onclick="toggleScheduler()">⏸ Pause</button>
       </div>
     </div>
@@ -862,6 +863,14 @@
     const d = await r.json();
     if (d.ok) alert(`✅ Test email sent to ${d.sent_to} — check your inbox!`);
     else alert(`❌ SMTP failed: ${d.error}`);
+  }
+
+  async function regenAll() {
+    if (!confirm('Re-generate ALL existing sites with the new color palettes? This runs in the background and may take a while.')) return;
+    const r = await fetch('/api/regen-all', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) alert(`🎨 Queued ${d.queued} sites for regeneration — watch the scheduler log for progress.`);
+    else alert(`❌ Error: ${d.error}`);
   }
 
   async function toggleScheduler() {

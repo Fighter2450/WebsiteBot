@@ -169,6 +169,9 @@ def _strategy_ddg_direct(name: str, city: str) -> list[str]:
         f'"{name}" {city_short} contact email',
         f'"{name}" {city_short} "@gmail.com" OR "@yahoo.com" OR "@hotmail.com"',
         f'"{name}" {city_short} owner',
+        # Common in Africa / SE Asia — WhatsApp listed alongside email
+        f'"{name}" {city_short} "gmail.com"',
+        f'"{name}" {city_short} contact us',
     ]
     for q in queries:
         html = _ddg(q)
@@ -176,6 +179,36 @@ def _strategy_ddg_direct(name: str, city: str) -> list[str]:
         if emails:
             return emails
         time.sleep(0.3)
+    return []
+
+
+def _strategy_google_maps_listing(name: str, city: str) -> list[str]:
+    """Scrape the Google Maps business listing page for a contact email."""
+    city_short = city.split(",")[0]
+    query = f'"{name}" {city_short} site:google.com/maps'
+    html = _ddg(query)
+    urls = [u for u in _extract_urls_from_ddg(html) if "google.com/maps" in u or "maps.google" in u]
+    for url in urls[:2]:
+        page = _get(url)
+        if page:
+            emails = _filter(EMAIL_RE.findall(page), name)
+            if emails:
+                return emails
+    return []
+
+
+def _strategy_whatsapp_biz(name: str, city: str) -> list[str]:
+    """Many African/SE Asian businesses list contact via WhatsApp Business page."""
+    city_short = city.split(",")[0]
+    html = _ddg(f'site:wa.me "{name}" OR "{name.split()[0]}" {city_short}')
+    urls = [u for u in _extract_urls_from_ddg(html) if "wa.me" in u or "whatsapp" in u]
+    # wa.me pages sometimes show email in OG tags or description
+    for url in urls[:2]:
+        page = _get(url)
+        if page:
+            emails = _filter(EMAIL_RE.findall(page), name)
+            if emails:
+                return emails
     return []
 
 
@@ -317,7 +350,19 @@ def find_email(business: dict) -> str | None:
         print(f"  [email] Found via Yelp: {emails[0]}")
         return emails[0]
 
-    # 6. Pattern guess with MX check (last resort — only sends to real domains)
+    # 6. Google Maps listing scrape
+    emails = _strategy_google_maps_listing(name, city)
+    if emails:
+        print(f"  [email] Found via Google Maps listing: {emails[0]}")
+        return emails[0]
+
+    # 7. WhatsApp Business (common in Africa / SE Asia)
+    emails = _strategy_whatsapp_biz(name, city)
+    if emails:
+        print(f"  [email] Found via WhatsApp biz: {emails[0]}")
+        return emails[0]
+
+    # 8. Pattern guess with MX check (last resort — only sends to real domains)
     emails = _strategy_pattern_guess(name, city, address)
     if emails:
         print(f"  [email] Using pattern guess: {emails[0]}")
