@@ -275,9 +275,14 @@ def test_email():
         msg["Subject"] = "WebsiteBot SMTP Test"
         msg["From"]    = f"{fname} <{user}>"
         msg["To"]      = user
-        with smtplib.SMTP(host, port) as s:
-            s.ehlo(); s.starttls(); s.login(user, pw)
-            s.sendmail(user, user, msg.as_string())
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port) as s:
+                s.login(user, pw)
+                s.sendmail(user, user, msg.as_string())
+        else:
+            with smtplib.SMTP(host, port) as s:
+                s.ehlo(); s.starttls(); s.login(user, pw)
+                s.sendmail(user, user, msg.as_string())
         log(f"📧 Test email sent to {user}")
         return jsonify({"ok": True, "sent_to": user})
     except Exception as e:
