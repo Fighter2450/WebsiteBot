@@ -838,6 +838,13 @@
         document.getElementById('sched-next-run').textContent = nxt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
       }
 
+      // Update scope line with real counts
+      const cities = s.total_cities || '?';
+      const cats   = s.total_categories || 28;
+      const countries = s.total_countries || '?';
+      document.getElementById('sched-scope').textContent =
+        `Scanning ${cats} categories across ${cities} cities in ${countries} countries automatically`;
+
       // Sync selects
       if (s.business_type) document.getElementById('sel-type').value = s.business_type;
       if (s.interval_hours) document.getElementById('sel-interval').value = s.interval_hours;

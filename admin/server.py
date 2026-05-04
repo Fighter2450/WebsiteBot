@@ -253,6 +253,8 @@ def toggle_scheduler():
 def run_now():
     if scheduler_state["running"]:
         return jsonify({"error": "Already running"}), 400
+    # Force-enable so the cycle doesn't exit immediately if scheduler is paused
+    scheduler_state["enabled"] = True
     threading.Thread(target=run_bot_cycle, daemon=True).start()
     return jsonify({"ok": True})
 

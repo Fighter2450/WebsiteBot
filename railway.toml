@@ -1,0 +1,6 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "pip install -r requirements.txt && python admin/server.py"
+restartPolicyType = "always"

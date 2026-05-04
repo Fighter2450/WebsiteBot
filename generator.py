@@ -1,4 +1,5 @@
 import anthropic
+import hashlib
 from cities import LANGUAGE_NAMES
 
 
@@ -125,6 +126,109 @@ NAME_OVERRIDES = [
 ]
 
 
+# Multiple palette variants per category — name hash picks one so each
+# business gets a consistent but varied look.
+CATEGORY_VARIANTS: dict[str, list[tuple]] = {
+    "restaurant": [
+        ("#7f1d1d", "#fef2f2", "Playfair Display"),   # deep burgundy / cream
+        ("#14532d", "#f0fdf4", "Playfair Display"),   # forest green / mint
+        ("#1e3a8a", "#eff6ff", "Playfair Display"),   # deep navy / light blue
+        ("#3b0764", "#faf5ff", "Playfair Display"),   # deep violet / soft lavender
+        ("#0c4a6e", "#e0f2fe", "Fraunces"),           # deep ocean / sky
+        ("#365314", "#f7fee7", "Fraunces"),           # olive / pale lime
+        ("#4a1942", "#fdf4ff", "Playfair Display"),   # dark plum / blush
+        ("#292524", "#fef9c3", "Fraunces"),           # near-black / warm gold
+        ("#7c2d12", "#fff7ed", "Playfair Display"),   # burnt sienna / ivory
+        ("#064e3b", "#ecfdf5", "Playfair Display"),   # deep emerald / mint
+        ("#1c1917", "#fef3c7", "Space Grotesk"),      # charcoal / amber
+        ("#4c1d95", "#faf5ff", "Fraunces"),           # indigo / lavender
+    ],
+    "cafe": [
+        ("#78350f", "#fffbeb", "Fraunces"),           # espresso / warm ivory
+        ("#292524", "#fef9c3", "Space Grotesk"),      # near-black / amber
+        ("#14532d", "#f0fdf4", "Fraunces"),           # forest green / mint
+        ("#1e3a8a", "#fef9c3", "Fraunces"),           # navy / golden
+        ("#713f12", "#fdf8f2", "Fraunces"),           # amber brown / cream
+        ("#4c1d95", "#faf5ff", "Fraunces"),           # deep violet / lavender
+    ],
+    "bar": [
+        ("#0c0a09", "#fef3c7", "Space Grotesk"),      # near-black / warm amber glow
+        ("#1e3a8a", "#fef3c7", "Space Grotesk"),      # navy / amber
+        ("#3b0764", "#fef9c3", "Space Grotesk"),      # deep violet / gold
+        ("#292524", "#ecfdf5", "Space Grotesk"),      # charcoal / pale mint
+        ("#450a0a", "#fef2f2", "Space Grotesk"),      # blood red / cream
+        ("#064e3b", "#fef3c7", "Space Grotesk"),      # dark green / amber
+    ],
+    "bakery": [
+        ("#92400e", "#fdf8f2", "Fraunces"),           # amber brown / cream
+        ("#78350f", "#fffbeb", "Fraunces"),           # espresso / ivory
+        ("#831843", "#fdf2f8", "Playfair Display"),   # deep rose / blush
+        ("#166534", "#f0fdf4", "Fraunces"),           # forest green / mint
+        ("#4c1d95", "#faf5ff", "Fraunces"),           # violet / lavender
+        ("#1e3a8a", "#eff6ff", "Fraunces"),           # navy / pale blue
+    ],
+    "hair_care": [
+        ("#4c1d95", "#faf5ff", "Fraunces"),           # deep violet / soft lavender
+        ("#831843", "#fdf2f8", "Playfair Display"),   # magenta / blush
+        ("#1e3a8a", "#eff6ff", "Fraunces"),           # navy / pale blue
+        ("#065f46", "#ecfdf5", "Fraunces"),           # dark teal / mint
+        ("#292524", "#fef9c3", "Fraunces"),           # charcoal / warm gold
+    ],
+    "beauty_salon": [
+        ("#831843", "#fdf2f8", "Playfair Display"),   # deep magenta / blush
+        ("#4c1d95", "#faf5ff", "Playfair Display"),   # violet / lavender
+        ("#9d174d", "#fff1f2", "Playfair Display"),   # rose / blush
+        ("#1e3a8a", "#fdf2f8", "Playfair Display"),   # navy / blush
+        ("#166534", "#f0fdf4", "Playfair Display"),   # green / mint
+    ],
+    "gym": [
+        ("#7c2d12", "#fff7ed", "Space Grotesk"),      # burnt orange / warm light
+        ("#292524", "#fafaf9", "Space Grotesk"),      # charcoal / off-white
+        ("#1e3a8a", "#eff6ff", "Space Grotesk"),      # bold navy / light blue
+        ("#14532d", "#f0fdf4", "Space Grotesk"),      # dark green / mint
+        ("#450a0a", "#fef2f2", "Space Grotesk"),      # deep red / light
+        ("#1c1917", "#fef9c3", "Space Grotesk"),      # near-black / gold
+    ],
+    "spa": [
+        ("#166534", "#f0fdf4", "Playfair Display"),   # forest green / mint
+        ("#0e7490", "#ecfeff", "Playfair Display"),   # teal / pale cyan
+        ("#4c1d95", "#faf5ff", "Playfair Display"),   # violet / lavender
+        ("#831843", "#fdf2f8", "Playfair Display"),   # rose / blush
+        ("#1e3a8a", "#eff6ff", "Playfair Display"),   # navy / pale blue
+    ],
+    "florist": [
+        ("#881337", "#fff1f2", "Playfair Display"),   # deep rose / blush
+        ("#166534", "#f0fdf4", "Playfair Display"),   # forest green / mint
+        ("#4c1d95", "#faf5ff", "Playfair Display"),   # violet / lavender
+        ("#9a3412", "#fff7ed", "Playfair Display"),   # terracotta / warm white
+        ("#1e3a8a", "#eff6ff", "Playfair Display"),   # navy / pale blue
+    ],
+    "clothing_store": [
+        ("#312e81", "#eef2ff", "Fraunces"),           # deep indigo / soft white
+        ("#1c1917", "#fef9c3", "Fraunces"),           # near-black / gold
+        ("#831843", "#fdf2f8", "Fraunces"),           # rose / blush
+        ("#14532d", "#f0fdf4", "Fraunces"),           # green / mint
+        ("#292524", "#fafaf9", "Space Grotesk"),      # charcoal / off-white
+        ("#0c4a6e", "#e0f2fe", "Fraunces"),           # dark ocean / ice
+    ],
+}
+
+
+def _name_hash(name: str) -> int:
+    """Stable hash of the business name — same name always gets same palette."""
+    return int(hashlib.md5(name.lower().encode()).hexdigest(), 16)
+
+
+def _category_palette(category: str, name: str) -> tuple:
+    """Pick a palette for this category. Uses name hash for variety so two
+    restaurants don't always look identical, while staying thematically coherent."""
+    variants = CATEGORY_VARIANTS.get(category)
+    if variants:
+        return variants[_name_hash(name) % len(variants)]
+    # Fallback: single palette from PALETTES, or a neutral dark default
+    return PALETTES.get(category, ("#1e293b", "#f8fafc", "DM Sans"))
+
+
 def _theme_override(name: str, description: str) -> tuple | None:
     """Return (dark, light, font) if the business name/description matches a theme."""
     text = (name + " " + description).lower()
@@ -144,7 +248,7 @@ def generate_website(client: anthropic.Anthropic, business: dict, existing_html:
     if override:
         dark, light, font = override
     else:
-        dark, light, font = PALETTES.get(category, ("#1e3a8a", "#f9fafb", "Space Grotesk"))
+        dark, light, font = _category_palette(category, name)
     language_name = LANGUAGE_NAMES.get(language, "English")
 
     reviews  = [r for r in business.get("reviews", []) if r]

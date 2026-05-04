@@ -57,19 +57,49 @@ DETAIL_FIELDS = [
 ]
 
 
+def _offset_coords(lat: float, lng: float, km: float) -> list[tuple]:
+    """Return 8 points evenly spread ~km kilometres from the centre.
+    Avoids the tourist/commercial city centre where every business has a website."""
+    import math
+    delta_lat = km / 111.0
+    delta_lng = km / (111.0 * math.cos(math.radians(lat)))
+    offsets = [
+        ( delta_lat,  0),           # N
+        (-delta_lat,  0),           # S
+        ( 0,          delta_lng),   # E
+        ( 0,         -delta_lng),   # W
+        ( delta_lat * 0.7,  delta_lng * 0.7),   # NE
+        (-delta_lat * 0.7,  delta_lng * 0.7),   # SE
+        (-delta_lat * 0.7, -delta_lng * 0.7),   # SW
+        ( delta_lat * 0.7, -delta_lng * 0.7),   # NW
+    ]
+    return [(lat + dlat, lng + dlng) for dlat, dlng in offsets]
+
+
 def find_businesses_without_websites(api_key: str, city: str, business_type: str, limit: int = 60) -> list[dict]:
-    """Search residential neighborhoods for businesses with no website."""
+    """Search residential neighbourhoods for businesses with no website."""
     gmaps = googlemaps.Client(key=api_key)
 
-    # Get neighborhood coordinates for the city
+    # Use hardcoded residential coords where available, otherwise spread 8
+    # points ~5 km from city centre to avoid the saturated downtown core.
     if city in CITY_NEIGHBORHOODS:
         neighborhoods = CITY_NEIGHBORHOODS[city]
     else:
         geo = gmaps.geocode(city)
         if not geo:
-            raise ValueError(f"Could not geocode city: {city}")
+            print(f"  [warn] Could not geocode {city} — skipping")
+            return []
         loc = geo[0]["geometry"]["location"]
-        neighborhoods = [(loc["lat"], loc["lng"])]
+        center_lat, center_lng = loc["lat"], loc["lng"]
+        # Search at 3 km, 6 km, and 10 km rings around the centre.
+        # Closer rings catch inner suburbs; outer rings catch areas where
+        # small businesses are less likely to have websites.
+        neighborhoods = (
+            [(center_lat, center_lng)] +
+            _offset_coords(center_lat, center_lng, 3) +
+            _offset_coords(center_lat, center_lng, 6) +
+            _offset_coords(center_lat, center_lng, 10)
+        )
 
     results = []
     seen_ids = set()
