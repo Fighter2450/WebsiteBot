@@ -3,17 +3,17 @@ import hashlib
 from cities import LANGUAGE_NAMES
 
 
-SYSTEM = """You are an expert web designer. Generate a complete, single-file HTML website for a local business.
+SYSTEM = """You are an expert web designer. Continue writing a single-file HTML website for a local business. The <!DOCTYPE html>, <head>, and CSS color variables are already written — do NOT rewrite them, just continue from where the file left off.
 
 Requirements:
-- Modern, beautiful design with embedded CSS (no external dependencies except Google Fonts CDN)
+- Modern, beautiful design using the CSS variables --clr-dark and --clr-light already defined in :root
+- Use var(--clr-dark) for hero, nav, footer backgrounds. Use var(--clr-light) for body/section backgrounds. Never hardcode color hex values.
 - Mobile responsive
-- Sections: sticky nav, full-width hero with colored background (NOT white), about, services/specialties, hours & contact with Google Maps link, footer
-- CRITICAL: Use the EXACT hex color codes provided in the prompt. Do NOT substitute your own colors. The palette is pre-selected — your job is to apply it beautifully, not choose it.
+- Sections: sticky nav, full-width hero, about, services/specialties, hours & contact with Google Maps link, footer
 - Real content only — use the actual business name, address, phone, hours, and reviews provided
-- Output ONLY raw HTML from <!DOCTYPE html> to </html>. No markdown fences, no explanation.
+- Output ONLY the continuation of the HTML (from where the prefill ended). No markdown fences, no explanation.
 
-Critical: Write concise CSS (combine selectors, use shorthand). You must complete the entire file. An unfinished file renders as a blank page."""
+Critical: Write concise CSS (combine selectors, use shorthand). You must complete the entire file."""
 
 
 PALETTES = {
@@ -279,23 +279,37 @@ Hours:
 {f"Customer reviews to use as testimonials:{chr(10)}{reviews_txt}" if reviews_txt else ""}
 {logo_txt}{photos_txt}
 
-MANDATORY color palette — you MUST use these exact hex codes. Do not pick different colors based on business type:
-- Hero / dark sections background color: {dark}
-- Body / light sections background color: {light}
-- Headline font: {font} (load from Google Fonts)
-
+Headline font: {font} — load from Google Fonts.
 Language: Write ALL text in {language_name}. Every heading, paragraph, button, nav link, and footer must be in {language_name}.
 
-Make it feel authentic and specific to this exact business. Complete the full HTML file."""
+Make it feel authentic and specific to this exact business. Continue the HTML file from where it starts below."""
+
+    # Prefill the start of Claude's response with the exact colors already locked in.
+    # Claude cannot override colors it didn't write — it just continues from here.
+    prefill = (
+        f'<!DOCTYPE html>\n<html lang="{language}">\n<head>\n'
+        f'<meta charset="UTF-8">\n'
+        f'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        f'<title>{business["name"]}</title>\n'
+        f'<style>\n'
+        f':root {{\n'
+        f'  --clr-dark: {dark};\n'
+        f'  --clr-light: {light};\n'
+        f'  --clr-accent: {dark};\n'
+        f'}}\n'
+    )
 
     msg = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=8000,
         system=SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "user",      "content": prompt},
+            {"role": "assistant", "content": prefill},
+        ],
     )
-    html = msg.content[0].text.strip()
-    if html.startswith("```"):
-        html = html.split("\n", 1)[1]
-        html = html.rsplit("```", 1)[0]
+    # Claude continues from the prefill — stitch them back together
+    html = prefill + msg.content[0].text.strip()
+    if "```" in html:
+        html = html.split("```", 1)[0]
     return html
