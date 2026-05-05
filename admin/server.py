@@ -364,6 +364,73 @@ def regen_site():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/retry-failed-emails", methods=["POST"])
+def retry_failed_emails():
+    """Retry sending emails to all businesses with status=email_failed."""
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
+    from_name = os.environ.get("FROM_NAME", "")
+    if not all([smtp_host, smtp_user, smtp_pass]):
+        return jsonify({"error": "SMTP env vars not set"}), 500
+
+    con = get_db()
+    if not con:
+        return jsonify({"error": "No database"}), 500
+    rows = con.execute(
+        "SELECT * FROM businesses WHERE status='email_failed' AND email IS NOT NULL AND email != ''"
+    ).fetchall()
+    con.close()
+    total = len(rows)
+    if total == 0:
+        return jsonify({"ok": True, "retried": 0, "message": "No failed emails to retry"})
+
+    from emailer import send_pitch
+
+    def _run():
+        sent = 0
+        failed = 0
+        for r in rows:
+            biz = dict(r)
+            try:
+                railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+                base_url = (os.environ.get("PUBLIC_URL", "").rstrip("/")
+                            or (f"https://{railway_domain}" if railway_domain else "")
+                            or "http://localhost:5050")
+                token = biz.get("token", "")
+                customize_url = f"{base_url}/customize/{token}" if token else ""
+                preview_url   = biz.get("preview_url", "")
+                language      = get_city_info(biz.get("city", "")).get("lang", "en")
+
+                business = {
+                    "name":     biz["name"],
+                    "category": biz.get("category", "restaurant"),
+                    "city":     biz.get("city", ""),
+                    "phone":    biz.get("phone", ""),
+                }
+                send_pitch(
+                    smtp_host=smtp_host, smtp_port=smtp_port,
+                    smtp_user=smtp_user, smtp_pass=smtp_pass,
+                    from_name=from_name, to_email=biz["email"],
+                    business=business, preview_url=preview_url,
+                    customize_url=customize_url, language=language,
+                )
+                con2 = get_db()
+                con2.execute("UPDATE businesses SET status='sent' WHERE place_id=?", (biz["place_id"],))
+                con2.commit()
+                con2.close()
+                sent += 1
+                log(f"📧 Retry sent → {biz['name']} ({biz['email']})")
+            except Exception as e:
+                failed += 1
+                log(f"❌ Retry failed → {biz['name']}: {e}")
+        log(f"✅ Retry complete: {sent} sent, {failed} still failing")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"ok": True, "queued": total})
+
+
 @app.route("/api/regen-all", methods=["POST"])
 def regen_all():
     """Re-generate every site with the current palette logic (fixes old red/white sites)."""
