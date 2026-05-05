@@ -3,16 +3,26 @@ import hashlib
 from cities import LANGUAGE_NAMES
 
 
-SYSTEM = """You are an expert web designer. Generate a complete, single-file HTML website for a local business.
+SYSTEM = """You are a senior web designer. Generate a complete, polished, single-file HTML website for a local business.
 
-Requirements:
-- Modern, beautiful design with embedded CSS (no external dependencies except Google Fonts CDN)
-- Mobile responsive
-- Sections: sticky nav, full-width hero with colored background, about, services/specialties, hours & contact with Google Maps link, footer
-- Real content only — use the actual business name, address, phone, hours, and reviews provided
-- Output ONLY raw HTML from <!DOCTYPE html> to </html>. No markdown fences, no explanation.
+Design standards:
+- Clean, modern layout with generous whitespace — no clutter
+- Typography: large bold headings, readable body text (1.6 line-height), clear hierarchy
+- NO emojis anywhere in the design — use clean text and CSS shapes instead
+- Hero: full-width, min-height 85vh, business name large and centered, subtle overlay on photo if one is provided
+- If photo URLs are provided, use them as real <img> tags (object-fit:cover) — do NOT use placeholder or emoji images
+- If no photos, use a solid color hero with no fake image placeholders
+- Sections: sticky nav, hero, about, services (card grid), hours & contact, footer
+- Hours in a clean table or list — no emoji clock icons
+- Google Maps link using the business address
+- Reviews as elegant blockquotes with a subtle left border — no star emoji, use CSS stars or plain text rating
+- Mobile responsive with a hamburger-free nav (links stack on small screens)
+- No external dependencies except Google Fonts
 
-Critical: Write concise CSS (combine selectors, use shorthand). You must complete the entire file. An unfinished file renders as a blank page."""
+Code quality:
+- Output ONLY raw HTML from <!DOCTYPE html> to </html>. No markdown, no explanation.
+- Concise CSS: combine selectors, use shorthand, no redundant rules
+- Complete the entire file — an unfinished file renders blank"""
 
 
 PALETTES = {
@@ -250,19 +260,25 @@ def generate_website(client: anthropic.Anthropic, business: dict, existing_html:
         dark, light, font = _category_palette(category, name)
     language_name = LANGUAGE_NAMES.get(language, "English")
 
-    reviews  = [r for r in business.get("reviews", []) if r]
-    hours    = business.get("hours", [])
-    tagline  = business.get("tagline", "")
-    desc     = business.get("description", "")
-    logo     = business.get("logo_b64", "")
-    photos   = business.get("photos_b64", [])
+    reviews   = [r for r in business.get("reviews", []) if r]
+    hours     = business.get("hours", [])
+    tagline   = business.get("tagline", "")
+    desc      = business.get("description", "")
+    logo      = business.get("logo_b64", "")
+    photo_urls = business.get("photo_urls", [])
 
-    hours_txt    = "\n".join(hours) if hours else "Call for hours"
-    reviews_txt  = "\n".join(f'- "{r}"' for r in reviews[:3]) if reviews else ""
-    logo_txt     = f"\nEmbed this base64 logo as <img> in the nav (max-height:48px): {logo[:80]}..." if logo else ""
-    photos_txt   = f"\nEmbed these {len(photos)} base64 photos as <img> tags in a gallery section: {photos[0][:60]}..." if photos else ""
-    tagline_txt  = f"\nTagline: {tagline}" if tagline else ""
-    desc_txt     = f"\nDescription: {desc}" if desc else ""
+    hours_txt   = "\n".join(hours) if hours else "Call for hours"
+    reviews_txt = "\n".join(f'- "{r}"' for r in reviews[:3]) if reviews else ""
+    logo_txt    = f"\nEmbed this base64 logo as <img> in the nav (max-height:48px): {logo[:80]}..." if logo else ""
+    tagline_txt = f"\nTagline: {tagline}" if tagline else ""
+    desc_txt    = f"\nDescription: {desc}" if desc else ""
+
+    if photo_urls:
+        photos_txt = "\nReal business photos — use these as <img src='URL'> tags (object-fit:cover):\n" + "\n".join(
+            f"  Photo {i+1}: {url}" for i, url in enumerate(photo_urls)
+        )
+    else:
+        photos_txt = "\nNo photos available — use a solid color hero, no placeholder images."
     rating       = business.get("rating")
     rating_txt   = f"\nGoogle Rating: {rating} stars ({business.get('review_count', 0)} reviews)" if rating else ""
 

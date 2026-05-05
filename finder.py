@@ -53,7 +53,7 @@ CITY_NEIGHBORHOODS = {
 
 DETAIL_FIELDS = [
     "name", "place_id", "formatted_address", "formatted_phone_number",
-    "website", "opening_hours", "rating", "user_ratings_total", "reviews", "type"
+    "website", "opening_hours", "rating", "user_ratings_total", "reviews", "type", "photos"
 ]
 
 
@@ -147,6 +147,16 @@ def find_businesses_without_websites(api_key: str, city: str, business_type: str
 
             name = detail.get("name", place.get("name", ""))
             print(f"  [found] {name} — no website")
+            # Build Google Places photo URLs (up to 3 real photos of the business)
+            photo_refs = [
+                p.get("photo_reference", "")
+                for p in detail.get("photos", [])[:3]
+                if p.get("photo_reference")
+            ]
+            photo_urls = [
+                f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference={ref}&key={api_key}"
+                for ref in photo_refs
+            ]
             results.append({
                 "place_id": place_id,
                 "name": name,
@@ -158,6 +168,7 @@ def find_businesses_without_websites(api_key: str, city: str, business_type: str
                 "reviews": [r.get("text", "") for r in detail.get("reviews", [])[:3]],
                 "category": business_type,
                 "city": city,
+                "photo_urls": photo_urls,
             })
 
     if time.time() > deadline:
