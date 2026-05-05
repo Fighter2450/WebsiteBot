@@ -9,14 +9,15 @@ SYSTEM = """You are a senior web designer. Generate a complete, polished, single
 Design standards:
 - Clean, modern layout with generous whitespace — no clutter
 - Typography: large bold headings, readable body text (1.6 line-height), clear hierarchy
-- NO emojis anywhere in the design — use clean text and CSS shapes instead
+- ABSOLUTELY NO EMOJIS — not in headings, nav, buttons, icons, body text, or anywhere else. Zero. None.
+- Use CSS shapes, borders, or Unicode symbols like ★ (U+2605) for ratings ONLY — no emoji substitutes
 - Hero: full-width, min-height 85vh, business name large and centered, subtle overlay on photo if one is provided
 - If photo URLs are provided, use them as real <img> tags (object-fit:cover) — do NOT use placeholder or emoji images
 - If no photos, use a solid color hero with no fake image placeholders
 - Sections: sticky nav, hero, about, services (card grid), hours & contact, footer
-- Hours in a clean table or list — no emoji clock icons
-- Google Maps link using the business address
-- Reviews as elegant blockquotes with a subtle left border — no star emoji, use CSS stars or plain text rating
+- Hours in a clean table or list — plain text labels only, no icons
+- Google Maps link using the business address — text link only, no emoji pin
+- Reviews as elegant blockquotes with a subtle left border — plain text or CSS stars, no emoji
 - Mobile responsive with a hamburger-free nav (links stack on small screens)
 - No external dependencies except Google Fonts
 
@@ -314,7 +315,42 @@ Make it feel authentic and specific to this exact business."""
     # Lock palette: replace background hex colors inside <style> blocks
     # so Claude's chosen reds/yellows become our actual palette colors.
     html = _lock_palette(html, dark, light, font)
+
+    # Strip any emojis Claude snuck in despite instructions
+    html = _strip_emojis(html)
+
     return html
+
+
+def _strip_emojis(html: str) -> str:
+    """Remove Unicode emoji characters from the generated HTML.
+    Operates on the raw string so it catches emojis in any context."""
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"   # emoticons
+        "\U0001F300-\U0001F5FF"   # symbols & pictographs
+        "\U0001F680-\U0001F6FF"   # transport & map
+        "\U0001F700-\U0001F77F"   # alchemical symbols
+        "\U0001F780-\U0001F7FF"   # geometric extended
+        "\U0001F800-\U0001F8FF"   # supplemental arrows
+        "\U0001F900-\U0001F9FF"   # supplemental symbols & pictographs
+        "\U0001FA00-\U0001FA6F"   # chess symbols
+        "\U0001FA70-\U0001FAFF"   # symbols & pictographs extended-A
+        "\U00002702-\U000027B0"   # dingbats
+        "\U000024C2-\U0001F251"   # enclosed chars
+        "\U0001F004"              # mahjong tile
+        "\U0001F0CF"              # playing card
+        "\U0001F170-\U0001F171"   # A/B buttons
+        "\U0001F17E-\U0001F17F"   # O/P buttons
+        "\U0001F18E"              # AB button
+        "\U000023E9-\U000023F3"   # transport symbols
+        "\U000023F8-\U000023FA"   # pause/stop
+        "\U0000200D"              # zero-width joiner
+        "\U0000FE0F"              # variation selector-16
+        "]+",
+        flags=re.UNICODE,
+    )
+    return emoji_pattern.sub("", html)
 
 
 def _luminance(hex_color: str) -> float:
