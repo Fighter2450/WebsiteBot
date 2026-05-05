@@ -117,12 +117,12 @@
   .city-count { font-family:'Share Tech Mono',monospace; font-size:0.75rem; color:var(--cyan); min-width:24px; text-align:right; }
   /* SCHEDULER PANEL */
   .scheduler-panel { padding:16px 20px; border-bottom:1px solid var(--border); }
-  .sched-status-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .sched-status-row { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
   .sched-status { display:flex; align-items:center; gap:8px; font-family:'Share Tech Mono',monospace; font-size:0.78rem; }
   .sched-dot { width:8px; height:8px; border-radius:50%; background:var(--dim); }
   .sched-dot.active { background:var(--green); box-shadow:var(--glow-green); animation:pulse 2s infinite; }
   .sched-dot.running { background:var(--cyan); box-shadow:var(--glow-cyan); animation:pulse 0.8s infinite; }
-  .sched-buttons { display:flex; gap:6px; }
+  .sched-buttons { display:flex; gap:6px; flex-wrap:wrap; }
   .sched-btn {
     font-family:'Share Tech Mono',monospace; font-size:0.68rem; padding:5px 10px;
     border-radius:5px; border:1px solid var(--border); background:transparent;
