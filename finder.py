@@ -1,6 +1,7 @@
 import googlemaps
 import time
 import re
+from cities import WORLD_CITIES
 
 CHAIN_KEYWORDS = {
     "mcdonald", "subway", "starbucks", "burger king", "wendy", "taco bell",
@@ -80,10 +81,19 @@ def find_businesses_without_websites(api_key: str, city: str, business_type: str
     """Search residential neighbourhoods for businesses with no website."""
     gmaps = googlemaps.Client(key=api_key)
 
-    # Use hardcoded residential coords where available, otherwise spread 8
-    # points ~5 km from city centre to avoid the saturated downtown core.
+    # Priority 1: hardcoded residential coords (US cities, avoids tourist downtown core)
+    # Priority 2: WORLD_CITIES coordinates (all international cities — no geocoding needed)
+    # Priority 3: Geocoding API as last resort
     if city in CITY_NEIGHBORHOODS:
         neighborhoods = CITY_NEIGHBORHOODS[city]
+    elif city in WORLD_CITIES:
+        info = WORLD_CITIES[city]
+        center_lat, center_lng = info["lat"], info["lng"]
+        # Search centre + 8 points at 5 km (residential ring)
+        neighborhoods = (
+            [(center_lat, center_lng)] +
+            _offset_coords(center_lat, center_lng, 5)
+        )
     else:
         geo = gmaps.geocode(city)
         if not geo:
@@ -91,8 +101,6 @@ def find_businesses_without_websites(api_key: str, city: str, business_type: str
             return []
         loc = geo[0]["geometry"]["location"]
         center_lat, center_lng = loc["lat"], loc["lng"]
-        # Search centre + 8 points at 5 km (residential ring).
-        # 9 points is enough to find no-website businesses without timing out.
         neighborhoods = (
             [(center_lat, center_lng)] +
             _offset_coords(center_lat, center_lng, 5)
