@@ -296,7 +296,7 @@ Make it feel authentic and specific to this exact business. Continue the HTML fi
         f'  --clr-dark: {dark};\n'
         f'  --clr-light: {light};\n'
         f'  --clr-accent: {dark};\n'
-        f'}}\n'
+        f'}}'
     )
 
     msg = client.messages.create(
