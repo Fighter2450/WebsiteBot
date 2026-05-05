@@ -98,8 +98,7 @@ def run(city: str, business_type: str, limit: int, dry_run: bool):
             html = generate_website(client, biz, language=language)
             print(f"[generate] Done ({len(html):,} chars)")
         except Exception as e:
-            print(f"[generate] Failed: {e} — skipping")
-            mark_processed(place_id, name, city, business_type, "", "", "generate_failed", html="")
+            print(f"[generate] Failed: {e} — will retry next cycle")
             continue
 
         if dry_run:

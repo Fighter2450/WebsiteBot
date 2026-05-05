@@ -33,10 +33,17 @@ def init_db():
 
 
 def already_processed(place_id: str) -> bool:
+    """Return True only if the business was successfully processed.
+    generate_failed and deploy_failed are retried on the next cycle."""
     con = sqlite3.connect(DB_PATH)
-    row = con.execute("SELECT 1 FROM businesses WHERE place_id = ?", (place_id,)).fetchone()
+    row = con.execute(
+        "SELECT status FROM businesses WHERE place_id = ?", (place_id,)
+    ).fetchone()
     con.close()
-    return row is not None
+    if row is None:
+        return False
+    # Retry these — previous run crashed before finishing
+    return row[0] not in ("generate_failed", "deploy_failed")
 
 
 def mark_processed(place_id: str, name: str, city: str, category: str,
