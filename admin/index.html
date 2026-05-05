@@ -413,21 +413,7 @@
     </div>
     <div class="sched-city-running" id="sched-city-running">📍 <span id="sched-current-city">—</span> — <span id="sched-current-cat">—</span></div>
     <div class="sched-next">Next auto-run: <span id="sched-next-run">—</span></div>
-    <div style="font-size:0.7rem;color:var(--dim);margin-bottom:10px" id="sched-scope">Scanning all categories across all 25 cities automatically</div>
-    <div class="sched-settings">
-      <select class="sched-select" id="sel-interval" onchange="saveSettings()">
-        <option value="1">Every 1hr</option>
-        <option value="2" selected>Every 2hrs</option>
-        <option value="4">Every 4hrs</option>
-        <option value="6">Every 6hrs</option>
-        <option value="12">Every 12hrs</option>
-      </select>
-      <select class="sched-select" id="sel-limit" onchange="saveSettings()">
-        <option value="5">5/city</option>
-        <option value="10" selected>10/city</option>
-        <option value="20">20/city</option>
-      </select>
-    </div>
+    <div style="font-size:0.7rem;color:var(--dim);margin-bottom:10px" id="sched-scope">Scanning all categories across all cities automatically</div>
     <div style="margin-top:10px"><div class="panel-title" style="margin-bottom:6px">Bot Log</div>
     <div class="sched-log" id="sched-log"></div></div>
   </div>
@@ -849,8 +835,6 @@
 
       // Sync selects
       if (s.business_type) document.getElementById('sel-type').value = s.business_type;
-      if (s.interval_hours) document.getElementById('sel-interval').value = s.interval_hours;
-      if (s.limit_per_city) document.getElementById('sel-limit').value = s.limit_per_city;
 
       // Log
       document.getElementById('sched-log').innerHTML = s.log.map((l,i) =>
@@ -894,7 +878,7 @@
     setTimeout(fetchScheduler, 500);
   }
 
-  async function saveSettings() {
+  async function saveSettings() { return; // settings removed
     await fetch('/api/scheduler/settings', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
