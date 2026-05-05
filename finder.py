@@ -1,7 +1,7 @@
 import googlemaps
 import time
 import re
-from cities import WORLD_CITIES
+from cities import WORLD_CITIES  # used for coordinate lookup — no Geocoding API needed
 
 CHAIN_KEYWORDS = {
     "mcdonald", "subway", "starbucks", "burger king", "wendy", "taco bell",
