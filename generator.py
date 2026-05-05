@@ -1,5 +1,6 @@
 import anthropic
 import hashlib
+import re
 from cities import LANGUAGE_NAMES
 
 
@@ -310,21 +311,57 @@ Make it feel authentic and specific to this exact business."""
         html = html.split("\n", 1)[1]
         html = html.rsplit("```", 1)[0]
 
-    # Force our palette into the HTML by injecting a CSS block that overrides
-    # whatever colors Claude chose. !important beats any selector Claude wrote.
-    palette_css = (
-        f'<style id="palette">'
-        f'nav,header,.nav,.header,.navbar{{background:{dark}!important;color:#fff!important}}'
-        f'.hero,.hero-section,.banner,[class*="hero"],[class*="banner"]{{background:{dark}!important}}'
-        f'footer,.footer,[class*="footer"]{{background:{dark}!important;color:#fff!important}}'
+    # Lock palette: replace background hex colors inside <style> blocks
+    # so Claude's chosen reds/yellows become our actual palette colors.
+    html = _lock_palette(html, dark, light, font)
+    return html
+
+
+def _luminance(hex_color: str) -> float:
+    h = hex_color.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    except Exception:
+        return 0.5
+
+
+def _lock_palette(html: str, dark: str, light: str, font: str) -> str:
+    """Replace background/border hex colors inside <style> blocks with our palette,
+    then inject safety-net !important overrides for nav/footer/body."""
+
+    # Step 1: regex-replace background colors in CSS
+    bg_prop = re.compile(
+        r'((?:background(?:-color)?|border(?:-color)?)\s*:\s*)(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})',
+        re.IGNORECASE,
+    )
+
+    def swap(m: re.Match) -> str:
+        lum = _luminance(m.group(2))
+        return m.group(1) + (dark if lum < 0.45 else light)
+
+    style_block = re.compile(r'(<style[^>]*>)(.*?)(</style>)', re.DOTALL | re.IGNORECASE)
+
+    def fix_styles(m: re.Match) -> str:
+        return m.group(1) + bg_prop.sub(swap, m.group(2)) + m.group(3)
+
+    html = style_block.sub(fix_styles, html)
+
+    # Step 2: safety-net !important block — catches inline styles and missed selectors
+    overrides = (
+        f'<style id="palette-lock">'
+        f'nav,nav *,header{{background:{dark}!important}}'
+        f'nav a,nav *{{color:#fff!important}}'
+        f'footer,footer *{{background:{dark}!important;color:#fff!important}}'
         f'body{{background:{light}!important}}'
-        f'h1,h2,h3{{font-family:"{font}",serif}}'
+        f'h1,h2,h3,h4{{font-family:"{font}",Georgia,serif!important}}'
         f'</style>'
     )
-    # Inject just before </head> so it loads last and wins
     if '</head>' in html:
-        html = html.replace('</head>', palette_css + '</head>', 1)
+        html = html.replace('</head>', overrides + '</head>', 1)
     elif '<body' in html:
-        html = html.replace('<body', palette_css + '<body', 1)
+        html = html.replace('<body', overrides + '<body', 1)
 
     return html
