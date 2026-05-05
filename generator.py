@@ -3,17 +3,16 @@ import hashlib
 from cities import LANGUAGE_NAMES
 
 
-SYSTEM = """You are an expert web designer. Continue writing a single-file HTML website for a local business. The <!DOCTYPE html>, <head>, and CSS color variables are already written — do NOT rewrite them, just continue from where the file left off.
+SYSTEM = """You are an expert web designer. Generate a complete, single-file HTML website for a local business.
 
 Requirements:
-- Modern, beautiful design using the CSS variables --clr-dark and --clr-light already defined in :root
-- Use var(--clr-dark) for hero, nav, footer backgrounds. Use var(--clr-light) for body/section backgrounds. Never hardcode color hex values.
+- Modern, beautiful design with embedded CSS (no external dependencies except Google Fonts CDN)
 - Mobile responsive
-- Sections: sticky nav, full-width hero, about, services/specialties, hours & contact with Google Maps link, footer
+- Sections: sticky nav, full-width hero with colored background, about, services/specialties, hours & contact with Google Maps link, footer
 - Real content only — use the actual business name, address, phone, hours, and reviews provided
-- Output ONLY the continuation of the HTML (from where the prefill ended). No markdown fences, no explanation.
+- Output ONLY raw HTML from <!DOCTYPE html> to </html>. No markdown fences, no explanation.
 
-Critical: Write concise CSS (combine selectors, use shorthand). You must complete the entire file."""
+Critical: Write concise CSS (combine selectors, use shorthand). You must complete the entire file. An unfinished file renders as a blank page."""
 
 
 PALETTES = {
@@ -282,34 +281,34 @@ Hours:
 Headline font: {font} — load from Google Fonts.
 Language: Write ALL text in {language_name}. Every heading, paragraph, button, nav link, and footer must be in {language_name}.
 
-Make it feel authentic and specific to this exact business. Continue the HTML file from where it starts below."""
-
-    # Prefill the start of Claude's response with the exact colors already locked in.
-    # Claude cannot override colors it didn't write — it just continues from here.
-    prefill = (
-        f'<!DOCTYPE html>\n<html lang="{language}">\n<head>\n'
-        f'<meta charset="UTF-8">\n'
-        f'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-        f'<title>{business["name"]}</title>\n'
-        f'<style>\n'
-        f':root {{\n'
-        f'  --clr-dark: {dark};\n'
-        f'  --clr-light: {light};\n'
-        f'  --clr-accent: {dark};\n'
-        f'}}'
-    )
+Make it feel authentic and specific to this exact business."""
 
     msg = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=8000,
         system=SYSTEM,
-        messages=[
-            {"role": "user",      "content": prompt},
-            {"role": "assistant", "content": prefill},
-        ],
+        messages=[{"role": "user", "content": prompt}],
     )
-    # Claude continues from the prefill — stitch them back together
-    html = prefill + msg.content[0].text.strip()
-    if "```" in html:
-        html = html.split("```", 1)[0]
+    html = msg.content[0].text.strip()
+    if html.startswith("```"):
+        html = html.split("\n", 1)[1]
+        html = html.rsplit("```", 1)[0]
+
+    # Force our palette into the HTML by injecting a CSS block that overrides
+    # whatever colors Claude chose. !important beats any selector Claude wrote.
+    palette_css = (
+        f'<style id="palette">'
+        f'nav,header,.nav,.header,.navbar{{background:{dark}!important;color:#fff!important}}'
+        f'.hero,.hero-section,.banner,[class*="hero"],[class*="banner"]{{background:{dark}!important}}'
+        f'footer,.footer,[class*="footer"]{{background:{dark}!important;color:#fff!important}}'
+        f'body{{background:{light}!important}}'
+        f'h1,h2,h3{{font-family:"{font}",serif}}'
+        f'</style>'
+    )
+    # Inject just before </head> so it loads last and wins
+    if '</head>' in html:
+        html = html.replace('</head>', palette_css + '</head>', 1)
+    elif '<body' in html:
+        html = html.replace('<body', palette_css + '<body', 1)
+
     return html
