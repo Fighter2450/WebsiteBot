@@ -94,8 +94,13 @@ def run(city: str, business_type: str, limit: int, dry_run: bool):
             continue
 
         print(f"\n[generate] Building website for: {name}")
-        html = generate_website(client, biz, language=language)
-        print(f"[generate] Done ({len(html):,} chars)")
+        try:
+            html = generate_website(client, biz, language=language)
+            print(f"[generate] Done ({len(html):,} chars)")
+        except Exception as e:
+            print(f"[generate] Failed: {e} — skipping")
+            mark_processed(place_id, name, city, business_type, "", "", "generate_failed", html="")
+            continue
 
         if dry_run:
             out = os.path.join(os.path.dirname(__file__), f"preview_{place_id[:8]}.html")
@@ -106,11 +111,24 @@ def run(city: str, business_type: str, limit: int, dry_run: bool):
             continue
 
         print(f"[deploy] Uploading to GitHub Gist...")
-        preview_url = deploy_to_gist(os.environ["GITHUB_TOKEN"], name, html)
-        print(f"[deploy] Preview: {preview_url}")
+        try:
+            preview_url = deploy_to_gist(os.environ["GITHUB_TOKEN"], name, html)
+            print(f"[deploy] Preview: {preview_url}")
+        except Exception as e:
+            print(f"[deploy] Gist failed: {e} — saving locally")
+            # Still save to DB so it appears on the globe; no public URL
+            mark_processed(place_id, name, city, business_type, "", "", "deploy_failed", html=html)
+            continue
 
         # Save HTML + generate token before emailing
         token = mark_processed(place_id, name, city, business_type, "", preview_url, "no_email", html=html)
+        # Also make the site accessible directly via Railway (no Gist dependency)
+        _railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+        _base = (os.environ.get("PUBLIC_URL", "").rstrip("/")
+                 or (f"https://{_railway_domain}" if _railway_domain else "")
+                 or "http://localhost:5050")
+        if token and not preview_url.startswith("http"):
+            preview_url = f"{_base}/preview/{token}"
         # Auto-detect public URL: Railway sets RAILWAY_PUBLIC_DOMAIN automatically
         _railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
         base_url = (
